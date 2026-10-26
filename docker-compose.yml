@@ -1,0 +1,70 @@
+# Despliegue en un servidor propio (VPS): base de datos, aplicación, HTTPS automático y copias diarias.
+# Uso: cp .env.example .env  →  completar  →  docker compose up -d --build
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: viora
+      POSTGRES_USER: viora
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?Definí DB_PASSWORD en .env}
+    volumes:
+      - dbdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U viora -d viora"]
+      interval: 10s
+      retries: 10
+
+  # Tarea única: migraciones, rol público restringido y biblioteca inicial.
+  setup:
+    build: { context: ., target: build }
+    command: ["pnpm", "db:setup"]
+    environment:
+      DATABASE_URL: postgres://viora:${DB_PASSWORD}@db:5432/viora
+      PUBLIC_DB_PASSWORD: ${PUBLIC_DB_PASSWORD:?Definí PUBLIC_DB_PASSWORD en .env}
+    depends_on:
+      db: { condition: service_healthy }
+    restart: "no"
+
+  app:
+    build:
+      context: .
+      target: run
+      args:
+        NEXT_PUBLIC_MAP_STYLE_URL: ${NEXT_PUBLIC_MAP_STYLE_URL:-}
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DATABASE_URL: postgres://viora:${DB_PASSWORD}@db:5432/viora
+      DATABASE_URL_PUBLIC: postgres://viora_public:${PUBLIC_DB_PASSWORD}@db:5432/viora
+      INTERNAL_APP_URL: http://127.0.0.1:3000
+    depends_on:
+      db: { condition: service_healthy }
+      setup: { condition: service_completed_successfully }
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports: ["80:80", "443:443"]
+    environment:
+      DOMAIN: ${DOMAIN:-localhost}
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddydata:/data
+    depends_on: [app]
+
+  # Copia de seguridad diaria (se conservan 14 días). Copiá ./backups fuera del servidor.
+  backup:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      PGPASSWORD: ${DB_PASSWORD}
+    volumes:
+      - ./backups:/backups
+    entrypoint: ["/bin/sh", "-c", "while true; do pg_dump -h db -U viora -d viora -Fc -f /backups/viora-$$(date +%F).dump && find /backups -name 'viora-*.dump' -mtime +14 -delete; sleep 86400; done"]
+    depends_on:
+      db: { condition: service_healthy }
+
+volumes:
+  dbdata:
+  caddydata:
