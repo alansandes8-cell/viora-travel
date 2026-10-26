@@ -14,6 +14,7 @@ export interface ClientProposal {
   concept: string;
   preferences: { label: string; value: string }[];
   exploratory: boolean;
+  travelMonths: number[];
   alternatives: {
     id: string;
     title: string;
@@ -100,6 +101,7 @@ export function toClientProposal(doc: PlanDocument, status: ClientProposal["stat
     concept: scrub(doc.concept),
     preferences: doc.profile.declared.map((d) => ({ label: d.label, value: scrub(d.value) })).filter((d) => d.value),
     exploratory: doc.profile.exploratory,
+    travelMonths: doc.profile.months,
     alternatives: doc.alternatives.map((a) => ({
       id: a.id,
       title: scrub(a.title),

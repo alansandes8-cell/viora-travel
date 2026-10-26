@@ -1,5 +1,5 @@
 import { allocateNights } from "./nights";
-import { refreshDerived, type PlanContext } from "./plan";
+import { joinNames, refreshDerived, type PlanContext } from "./plan";
 import { buildItinerary } from "./itinerary";
 import { affinityOf } from "./scoring";
 import { matchDestinations, normalize } from "./text";
@@ -215,7 +215,7 @@ export function applyChanges(docIn: PlanDocument, ops: ChangeOp[], answers: Inta
   const alt = doc.alternatives.find((a) => a.id === it.alternativeId);
   if (alt && stopsChanged) {
     alt.stops = stops.map((s) => ({ destinationId: s.dest.id, name: s.dest.name, country: s.dest.country, nights: s.nights }));
-    alt.title = alt.stops.length === 1 ? alt.stops[0].name : `${alt.stops.slice(0, -1).map((s) => s.name).join(", ")} y ${alt.stops[alt.stops.length - 1].name}`;
+    alt.title = joinNames(alt.stops.map((s) => s.name));
     alt.lodgingChanges = alt.stops.length - 1;
   }
   refreshDerived(doc, ctx);

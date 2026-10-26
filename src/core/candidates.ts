@@ -40,7 +40,10 @@ export function generateCandidates(profile: TravelerProfile, library: Destinatio
   const paceFactor = profile.pace === "relaxed" ? 1.3 : profile.pace === "intense" ? 0.9 : 1.1;
 
   const wantsSingle = profile.shape !== "multi" || nights <= 6;
-  const wantsRoute = profile.shape !== "single" || nights >= 12;
+  const wantsRoute =
+    profile.shape === "multi" ||
+    (profile.shape === "open" && nights >= 8 && !profile.avoidHotelChanges) ||
+    (profile.shape === "single" && nights >= 16 && !profile.avoidHotelChanges);
 
   // 1) Destino único
   if (wantsSingle) {
@@ -55,7 +58,13 @@ export function generateCandidates(profile: TravelerProfile, library: Destinatio
       if (nights <= d.nights.ideal + 1) continue;
       if (profile.avoidHotelChanges && nights <= d.nights.max * paceFactor + 2) continue;
       const partners = pool
-        .filter((p) => p.id !== d.id && SUPER_REGION[p.cluster] === SUPER_REGION[d.cluster] && haversineKm(d, p) < 1600)
+        .filter((p) => {
+          if (p.id === d.id || SUPER_REGION[p.cluster] !== SUPER_REGION[d.cluster]) return false;
+          const km = haversineKm(d, p);
+          // Para viajes de descanso solo combinaciones cercanas (mismo país o < 500 km); si no, hasta 1600 km.
+          const restful = (profile.interests.relax ?? 0) >= 0.7;
+          return restful ? p.countryCode === d.countryCode && km < 900 : km < 1600;
+        })
         .sort((a, b) => (aff.get(b.id) ?? 0) - (aff.get(a.id) ?? 0))
         .slice(0, 3);
       for (const p of partners) {

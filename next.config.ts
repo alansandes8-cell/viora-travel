@@ -12,6 +12,14 @@ const securityHeaders = [
 const nextConfig: NextConfig = {
   output: "standalone",
   poweredByHeader: false,
+  turbopack: {
+    rules: {
+      "*.css": {
+        loaders: ["@tailwindcss/turbopack"],
+        as: "*.css",
+      },
+    },
+  },
   serverExternalPackages: ["pg", "exceljs", "playwright-core"],
   async headers() {
     return [

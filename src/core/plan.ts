@@ -41,9 +41,12 @@ const LABEL_BY_CRITERION: Partial<Record<Criterion, string>> = {
 };
 
 function titleFor(c: Candidate): string {
-  const names = c.stops.map((s) => s.dest.name);
+  return joinNames(c.stops.map((s) => s.dest.name));
+}
+
+export function joinNames(names: string[]): string {
   if (names.length === 1) return names[0];
-  if (names.length === 2) return `${names[0]} y ${names[1]}`;
+  if (names.some((n) => / y /.test(n))) return names.join(" · ");
   return `${names.slice(0, -1).join(", ")} y ${names[names.length - 1]}`;
 }
 
@@ -332,7 +335,7 @@ function buildTitle(answers: IntakeAnswers, profile: TravelerProfile, alt?: Alte
 }
 
 function buildConcept(answers: IntakeAnswers, profile: TravelerProfile): string {
-  if (answers.dreamText && answers.dreamText.trim().length > 10) return answers.dreamText.trim();
+  if (answers.dreamText && answers.dreamText.trim().length > 10) return `Tu idea: «${answers.dreamText.trim().slice(0, 300)}»`;
   const bits: string[] = [];
   const top = Object.entries(profile.interests)
     .sort((a, b) => b[1] - a[1])
