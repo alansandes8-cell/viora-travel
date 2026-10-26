@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { MessageCircle } from "lucide-react";
 import type { ClientProposal } from "@/core/sanitize";
 import { whatsappSummary } from "@/core/summary";
+import { PricedView, type PricedProposal } from "@/components/proposal/priced-view";
 import { ProposalReport } from "@/components/proposal/proposal-report";
 import { Container } from "@/components/ui";
 import { whatsappLink } from "@/server/integrations/notify";
@@ -16,7 +17,15 @@ export const dynamic = "force-dynamic";
 export default async function SharedProposalPage({ params }: PageProps<"/p/[token]">) {
   const { token } = await params;
   const link = await resolveShareLink(token);
-  if (!link || link.kind !== "client_proposal") notFound();
+  if (!link) notFound();
+  if (link.kind === "priced_proposal") {
+    return (
+      <Container className="py-10">
+        <PricedView p={link.content as PricedProposal} />
+      </Container>
+    );
+  }
+  if (link.kind !== "client_proposal") notFound();
   const proposal = link.content as ClientProposal;
   const media = await proposalMedia(proposal);
   const wa = agency.whatsapp();

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any -- respuestas JSON de APIs externas, validadas campo por campo */
 import "server-only";
 import { and, eq, inArray, sql } from "drizzle-orm";
 import { db, schema } from "../db";

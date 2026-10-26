@@ -165,7 +165,6 @@ export function scoreCandidate(
 ): { scores: Record<Criterion, CriterionScore>; compatibility: number; travelHours: number | null; months: number[] } {
   const scores = {} as Record<Criterion, CriterionScore>;
   const totalNights = stops.reduce((a, s) => a + s.nights, 0);
-  const names = stops.map((s) => s.dest.name).join(", ");
 
   // Afinidad
   {

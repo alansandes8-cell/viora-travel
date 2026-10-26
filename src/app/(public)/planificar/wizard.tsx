@@ -171,7 +171,6 @@ export function Wizard({
   useEffect(() => {
     if (STEPS[step].key !== "smart") return;
     let active = true;
-    setQuestions(null);
     smartQuestionsAction(a)
       .then((q) => active && setQuestions(q))
       .catch(() => active && setQuestions([]));
@@ -218,6 +217,7 @@ export function Wizard({
     const e = validate(step);
     setErrors(e);
     if (Object.keys(e).length) return;
+    if (STEPS[step + 1]?.key === "smart") setQuestions(null);
     setStep((s) => Math.min(s + 1, STEPS.length - 1));
   }
 

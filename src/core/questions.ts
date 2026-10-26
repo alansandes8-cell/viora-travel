@@ -180,7 +180,7 @@ export function pickSmartQuestions(profile: TravelerProfile, answers: IntakeAnsw
   return BANK.filter((q) => answers.extra?.[q.id] === undefined && q.when(profile, answers))
     .sort((a, b) => b.impact - a.impact)
     .slice(0, max)
-    .map(({ when: _when, ...q }) => q);
+    .map((q) => ({ id: q.id, text: q.text, hint: q.hint, multi: q.multi, options: q.options, impact: q.impact }));
 }
 
 export const SMART_QUESTION_IDS = BANK.map((q) => q.id);
