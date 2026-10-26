@@ -5,7 +5,7 @@ import { signPayload } from "./security";
 const CANDIDATES = [process.env.CHROMIUM_PATH, "/opt/pw-browsers/chromium", "/opt/pw-browsers/chromium-1243/chrome-linux64/chrome", "/usr/bin/chromium", "/usr/bin/chromium-browser", "/usr/bin/google-chrome"];
 
 export function chromiumPath(): string | null {
-  for (const c of CANDIDATES) if (c && existsSync(c)) return c;
+  for (const c of CANDIDATES) if (c && existsSync(/* turbopackIgnore: true */ c)) return c;
   return null;
 }
 
