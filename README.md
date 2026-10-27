@@ -11,6 +11,7 @@ Documentación:
 |---|---|
 | [`docs/fase-1-analisis-y-plan.md`](docs/fase-1-analisis-y-plan.md) | Análisis y plan original (Fase 1) |
 | [`docs/ARQUITECTURA.md`](docs/ARQUITECTURA.md) | Arquitectura implementada, modelo de datos, seguridad, IA e integraciones |
+| [`docs/DESPLIEGUE-GRATIS.md`](docs/DESPLIEGUE-GRATIS.md) | **Paso a paso para ponerla en línea gratis** (Oracle Cloud + DuckDNS + copias en Google Drive) |
 | [`docs/ESTADO.md`](docs/ESTADO.md) | Qué está completo, qué se probó (con resultados), qué falta, costos y riesgos |
 
 ---
@@ -58,7 +59,7 @@ Las pruebas de punta a punta generan muchas propuestas seguidas: si chocan con e
 
 ## Despliegue (servidor propio)
 
-Pensado para un VPS con Docker (por ejemplo, de 2 GB de RAM). Alternativa sin costo a evaluar: la capa gratuita de Oracle Cloud (verificar condiciones vigentes).
+Pensado para un VPS con Docker (por ejemplo, de 2 GB de RAM). Para hacerlo sin costo, seguí [`docs/DESPLIEGUE-GRATIS.md`](docs/DESPLIEGUE-GRATIS.md) (Oracle Cloud Always Free); los scripts de `deploy/` automatizan la instalación.
 
 1. Apuntar el dominio (registro A) a la IP del servidor.
 2. En el servidor:
