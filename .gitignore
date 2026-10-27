@@ -45,3 +45,4 @@ next-env.d.ts
 /test-results
 /storage
 /public/vendor
+/preview/dist.html
