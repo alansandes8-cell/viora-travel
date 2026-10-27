@@ -6,6 +6,8 @@ Guía paso a paso pensada para hacerla sin experiencia técnica. Tiempo estimado
 
 **Costo:** US$ 0. Oracle pide una tarjeta para verificar tu identidad, pero no cobra mientras uses solo recursos «Always Free». Más adelante podés sumar un dominio propio (por ejemplo, `vioratravel.com`); está explicado al final.
 
+> **¿Oracle no te deja crear la cuenta?** Seguí la guía alternativa con Google Cloud: [`DESPLIEGUE-GOOGLE-CLOUD.md`](DESPLIEGUE-GOOGLE-CLOUD.md).
+
 > Las pantallas de Oracle cambian seguido. Si un botón tiene otro nombre, buscá el más parecido. Si algo no coincide, mandame una captura y lo resolvemos.
 
 ---

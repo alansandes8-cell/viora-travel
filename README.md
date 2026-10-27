@@ -12,6 +12,7 @@ Documentación:
 | [`docs/fase-1-analisis-y-plan.md`](docs/fase-1-analisis-y-plan.md) | Análisis y plan original (Fase 1) |
 | [`docs/ARQUITECTURA.md`](docs/ARQUITECTURA.md) | Arquitectura implementada, modelo de datos, seguridad, IA e integraciones |
 | [`docs/DESPLIEGUE-GRATIS.md`](docs/DESPLIEGUE-GRATIS.md) | **Paso a paso para ponerla en línea gratis** (Oracle Cloud + DuckDNS + copias en Google Drive) |
+| [`docs/DESPLIEGUE-GOOGLE-CLOUD.md`](docs/DESPLIEGUE-GOOGLE-CLOUD.md) | Alternativa gratis si Oracle rechaza el alta (Google Cloud e2-micro + DuckDNS) |
 | [`docs/ESTADO.md`](docs/ESTADO.md) | Qué está completo, qué se probó (con resultados), qué falta, costos y riesgos |
 
 ---
