@@ -210,6 +210,17 @@ En **Ajustes → Estado de integraciones** del panel ves qué quedó activo.
 
 ---
 
+## Paso 9 — La app en el celular (gratis)
+
+VIORA es una app instalable (PWA): no pasa por Google Play ni App Store, se instala desde el navegador y se actualiza sola cada vez que actualizás el servidor.
+
+- **Clientes:** mandales `https://TU-DOMINIO/app` (en el panel, «App para clientes», está el QR y un botón para enviarlo por WhatsApp).
+  - Android (Chrome): botón «Instalar la app» o menú ⋮ → «Instalar app».
+  - iPhone (Safari): Compartir → «Agregar a inicio».
+- **Vos (panel):** abrí `https://TU-DOMINIO/admin` en el celu e instalalo igual: queda como otra app, «VIORA Panel», que abre directo en el panel.
+- Requiere HTTPS (Caddy ya lo configura). No funciona con la vista previa de Claude.
+- Si más adelante querés estar en las tiendas: Google Play cuesta USD 25 una sola vez (se puede publicar esta misma app con PWABuilder); App Store cuesta USD 99 por año y exige más trabajo.
+
 ## Uso diario
 
 | Para… | Comando (dentro de `~/viora-travel`) |

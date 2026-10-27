@@ -1,6 +1,7 @@
 import { ArrowRight, Compass, Globe2, HeartHandshake, Luggage, Map, Plane, Sparkles, Camera, Castle } from "lucide-react";
 import { TRIP_STYLE_DEFS } from "@/core/catalog";
 import { SmartImage } from "@/components/media/smart-image";
+import { InstallBanner } from "@/components/pwa/pwa";
 import { ACCENTS, ButtonLink, Card, Container, Logo, SectionTitle, cx } from "@/components/ui";
 import { imagesFor } from "@/server/media-helpers";
 
@@ -152,6 +153,7 @@ export default async function HomePage() {
           </Card>
         </Container>
       </section>
+      <InstallBanner />
     </>
   );
 }

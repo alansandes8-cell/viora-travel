@@ -54,6 +54,9 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
             <Link className="block hover:text-navy" href="/terminos">
               Términos de uso
             </Link>
+            <Link className="block hover:text-navy" href="/app">
+              Instalá la app
+            </Link>
             {process.env.AGENCY_LEGAL_ID && <p>Legajo: {process.env.AGENCY_LEGAL_ID}</p>}
           </div>
         </Container>

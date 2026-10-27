@@ -39,6 +39,13 @@ Fecha: 26/10/2026. Este documento separa lo que **funciona y fue probado**, lo q
 - Progreso como pasaporte con sellos, tarjeta «Tu perfil viajero» y confeti al ver la propuesta (se desactiva con «reducir movimiento»).
 - Fotos: en la plataforma salen de Unsplash/Pexels/Wikimedia si hay claves; si no hay foto, se muestra una postal ilustrada del destino rotulada «Ilustración». La vista previa usa solo ilustraciones.
 
+### App para celular (PWA)
+
+- Instalable en Android y iPhone desde `/app` (manifiesto, íconos, service worker). Verificado en Chromium: sin errores de instalabilidad, service worker activo, página «Sin conexión» cuando no hay internet.
+- El service worker no guarda propuestas ni datos privados: solo la página sin conexión y el ícono.
+- El panel se instala como app aparte («VIORA Panel»). En el panel, «App para clientes» tiene link, QR y envío por WhatsApp.
+- No se probó en un iPhone ni en un Android físicos (hace falta el servidor publicado con HTTPS).
+
 ## 2. Funciona con alternativa manual (no se finge la integración)
 
 | Función | Situación actual | Próximo paso |

@@ -1,8 +1,10 @@
 import Link from "next/link";
+import QRCode from "qrcode";
 import { ACTION_LABELS, PageHeader, Panel, Stat, fmtDateTime } from "@/components/admin/bits";
 import { Badge } from "@/components/ui";
 import { requireStaff } from "@/server/auth/session";
 import { dashboardStats } from "@/server/services/admin";
+import { agency } from "@/server/settings";
 
 export const metadata = { title: "Panel" };
 
@@ -11,6 +13,9 @@ const TASK_STATUS: Record<string, string> = { pending: "Pendiente", in_progress:
 export default async function DashboardPage() {
   await requireStaff();
   const s = await dashboardStats();
+  const appUrl = `${agency.appUrl()}/app`;
+  const qr = await QRCode.toString(appUrl, { type: "svg", margin: 1, color: { dark: "#1b2a4a", light: "#ffffff" } });
+  const waText = `¡Hola! Te paso la app de VIORA TRAVEL para planificar tu viaje: respondés unas preguntas y recibís tres alternativas pensadas para vos. ${appUrl}`;
   return (
     <>
       <PageHeader title="Panel de VIORA TRAVEL" subtitle="Resumen de proyectos, solicitudes y tareas." />
@@ -96,6 +101,20 @@ export default async function DashboardPage() {
           </ul>
         </Panel>
       </div>
+      <Panel title="App para clientes" className="mt-6">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+          <div className="w-32 shrink-0 rounded-xl border border-line p-2" role="img" aria-label="Código QR de la app" dangerouslySetInnerHTML={{ __html: qr }} />
+          <div className="space-y-2 text-sm">
+            <p>
+              Los clientes instalan VIORA desde <a href={appUrl} className="font-semibold text-navy underline" target="_blank" rel="noopener noreferrer">{appUrl}</a> (Android: «Instalar app»; iPhone: Compartir → «Agregar a inicio»). Podés mostrarles este QR o mandarles el link.
+            </p>
+            <a href={`https://wa.me/?text=${encodeURIComponent(waText)}`} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-10 items-center rounded-full bg-teal-brand px-4 py-2 font-semibold text-white hover:bg-teal-brand/90">
+              Enviar por WhatsApp
+            </a>
+            <p className="text-muted">Para tener el panel como app en tu celu: abrí /admin en el navegador del celu e instalalo igual («VIORA Panel»).</p>
+          </div>
+        </div>
+      </Panel>
     </>
   );
 }
