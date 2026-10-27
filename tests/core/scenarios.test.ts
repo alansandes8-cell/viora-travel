@@ -298,3 +298,38 @@ describe("Escenario 18 — la propuesta pública no expone precios", () => {
     expect(scanForMoney({ a: "Ideal para descansar" }).length).toBe(0);
   });
 });
+
+describe("Destinos ya conocidos (ajuste pedido por la agencia)", () => {
+  const all = (doc: PlanDocument) => doc.alternatives.flatMap((a) => a.stops.map((s) => s.destinationId));
+  it("no ofrece en NINGUNA alternativa las ciudades que el cliente ya visitó", () => {
+    const doc = generatePlan(answers({ tripStyles: ["eurotrip"], dates: { mode: "month", months: [9], nights: 14 }, history: { visited: ["Madrid", "París", "Roma", "Barcelona"], loved: [], wouldNotReturn: [], pending: [], avoid: [] } }), ctx);
+    for (const id of ["madrid", "paris", "roma", "barcelona"]) expect(all(doc)).not.toContain(id);
+  });
+  it("«ya conozco X» en el texto libre no convierte X en un deseo", () => {
+    const doc = generatePlan(answers({ tripStyles: ["eurotrip"], dreamText: "Ya conozco Madrid, París y Roma. Quiero descubrir lugares diferentes", dates: { mode: "month", months: [5], nights: 15 } }), ctx);
+    expect(doc.profile.wishIds).not.toContain("madrid");
+    for (const id of ["madrid", "paris", "roma"]) expect(all(doc)).not.toContain(id);
+  });
+  it("si declara países conocidos, evita sus destinos clásicos", () => {
+    const doc = generatePlan(answers({ tripStyles: ["big_cities"], dates: { mode: "month", months: [5], nights: 12 }, history: { visited: ["España", "Italia"], loved: [], wouldNotReturn: [], pending: [], avoid: [] } }), ctx);
+    for (const id of ["madrid", "barcelona", "roma", "florencia"]) expect(all(doc)).not.toContain(id);
+  });
+  it("playa: no repite Punta Cana ni Riviera Maya si ya fue", () => {
+    const doc = generatePlan(answers({ tripStyles: ["beach_relax"], dates: { mode: "month", months: [2], nights: 10 }, history: { visited: ["Punta Cana", "Cancún"], loved: [], wouldNotReturn: [], pending: [], avoid: [] } }), ctx);
+    expect(all(doc)).not.toContain("punta-cana");
+    expect(all(doc)).not.toContain("riviera-maya");
+  });
+  it("si pide incluir lugares conocidos, pueden aparecer", () => {
+    const doc = generatePlan(answers({ tripStyles: ["eurotrip"], dates: { mode: "month", months: [5], nights: 15 }, history: { visited: ["París"], loved: ["París"], wouldNotReturn: [], pending: [], avoid: [] }, extra: { include_known: "yes" } }), ctx);
+    expect(doc.profile.includeKnown).toBe(true);
+  });
+  it("playa en Europa con pocas opciones nuevas: alarga estadías antes de repetir lugares conocidos", () => {
+    const doc = generatePlan(answers({ tripStyles: ["beach_relax"], dreamText: "Ya conozco Madrid, París y Roma, quiero algo distinto en Europa 15 días" }), ctx);
+    for (const id of ["madrid", "paris", "roma"]) expect(all(doc)).not.toContain(id);
+    expect(doc.checks.map((c) => c.code)).not.toContain("known_included");
+  });
+  it("«no quiero ir a X» excluye X", () => {
+    const doc = generatePlan(answers({ tripStyles: ["eurotrip"], dreamText: "Quiero Europa pero no quiero ir a Londres", dates: { mode: "month", months: [5], nights: 15 } }), ctx);
+    expect(all(doc)).not.toContain("londres");
+  });
+});

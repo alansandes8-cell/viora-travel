@@ -147,3 +147,48 @@ export function extractNights(text: string): number | null {
   if (m[2] === "dias") return Math.max(1, n - 1);
   return n;
 }
+
+const KNOWN_CUE = /\b(ya (conozco|conoci|visite|fui|estuve|recorri)|conozco|conoci|visite|estuve en|fui a|ya hice|ya fuimos|ya estuvimos|ya visitamos|ya conocemos)\b/;
+const AVOID_CUE = /\b(no quiero (ir|volver|repetir)|no me interesa|no me gusta|evitar|prefiero evitar|nada de|no volveria)\b/;
+
+/**
+ * Separa lo que el texto libre menciona como deseo, como ya conocido o como algo a evitar.
+ * «Ya conozco Madrid y Roma, quiero algo distinto» no debe convertir Madrid en un deseo.
+ */
+export function classifyMentions(text: string, library: Destination[]): { wish: string[]; known: string[]; avoid: string[]; knownCountries: string[] } {
+  const wish = new Set<string>();
+  const known = new Set<string>();
+  const avoid = new Set<string>();
+  const knownCountries = new Set<string>();
+  const clauses = text
+    .replace(/(?<!\bno )\bquiero\b/gi, "\u0000quiero")
+    .split(/[.;!?\n\u0000]|\bpero\b|\bsin embargo\b|\bahora\b/i)
+    .map((c) => normalize(c))
+    .filter(Boolean);
+  for (const c of clauses) {
+    const ids = matchDestinations(c, library);
+    if (AVOID_CUE.test(c)) {
+      ids.forEach((id) => avoid.add(id));
+      matchCountries(c, library).forEach((id) => avoid.add(id));
+    } else if (KNOWN_CUE.test(c)) {
+      ids.forEach((id) => known.add(id));
+      for (const d of library) {
+        const country = normalize(d.country.split("(")[0]);
+        if (country.length > 3 && ` ${c} `.includes(` ${country} `)) knownCountries.add(d.countryCode);
+      }
+    } else ids.forEach((id) => wish.add(id));
+  }
+  return { wish: [...wish], known: [...known], avoid: [...avoid], knownCountries: [...knownCountries] };
+}
+
+/** Códigos de país de las entradas que son países (no ciudades) de la biblioteca. */
+export function matchCountryCodes(text: string, library: Destination[]): string[] {
+  if (matchDestinations(text, library).length) return [];
+  const t = ` ${normalize(text)} `;
+  const out = new Set<string>();
+  for (const d of library) {
+    const country = normalize(d.country.split("(")[0]);
+    if (country.length > 3 && t.includes(` ${country} `)) out.add(d.countryCode);
+  }
+  return [...out];
+}

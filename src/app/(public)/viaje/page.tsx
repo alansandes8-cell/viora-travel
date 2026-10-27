@@ -1,7 +1,10 @@
 import Link from "next/link";
 import { Check, Clock, Hotel, Minus, Plus, Waves } from "lucide-react";
 import { MONTHS_ES } from "@/core/catalog";
+import { mainStop } from "@/core/sanitize";
 import { SmartImage } from "@/components/media/smart-image";
+import { Confetti } from "@/components/proposal/confetti";
+import { PersonaCard } from "@/components/proposal/persona-card";
 import { ACCENT_ORDER, ACCENTS, Badge, Button, Card, CompatibilityRing, Container, Notice, cx } from "@/components/ui";
 import { imagesFor } from "@/server/media-helpers";
 import { currentProposal } from "@/server/services/client-flow";
@@ -25,6 +28,8 @@ export default async function ViajePage() {
         </Notice>
       ) : (
         <>
+          <Confetti id={data.snapshotId} />
+          {p.persona && <PersonaCard persona={p.persona} className="mb-10" />}
           <h2 className="text-2xl font-semibold">Tus tres alternativas</h2>
           <p className="mt-1 text-muted">Elegidas y ordenadas según lo que nos contaste. Cada una tiene un motivo distinto para estar acá.</p>
           <div className="mt-6 grid gap-6 lg:grid-cols-3">
@@ -35,7 +40,7 @@ export default async function ViajePage() {
               return (
                 <Card key={alt.id} className={cx("flex flex-col overflow-hidden", selected && "ring-2 ring-teal-brand")}>
                   <div className="relative">
-                    <SmartImage image={images[i]?.[0]} alt={alt.title} eager={i === 0} className="aspect-[16/10] w-full" fallbackLabel={alt.title} />
+                    <SmartImage image={images[i]?.[0]} alt={alt.title} eager={i === 0} className="aspect-[16/10] w-full" fallbackLabel={mainStop(alt)?.name ?? alt.title} kind={mainStop(alt)?.kind} />
                     <div className="absolute left-3 top-3 flex flex-wrap gap-1.5">
                       {alt.labels.map((l) => (
                         <span key={l} className="rounded-full bg-white/95 px-2.5 py-1 text-xs font-bold text-navy shadow-soft">

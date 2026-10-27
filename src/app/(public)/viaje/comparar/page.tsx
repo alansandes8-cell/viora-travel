@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { CloudSun, Minus, Plus } from "lucide-react";
+import { mainStop } from "@/core/sanitize";
 import { SmartImage } from "@/components/media/smart-image";
 import { ACCENT_ORDER, ACCENTS, Badge, Card, CompatibilityRing, Container, Meter, Notice, cx } from "@/components/ui";
 import { imagesFor } from "@/server/media-helpers";
@@ -40,7 +41,7 @@ export default async function CompararPage() {
           const accent = ACCENT_ORDER[i % ACCENT_ORDER.length];
           return (
             <Card key={a.id} className="w-[85vw] max-w-sm shrink-0 snap-center overflow-hidden lg:w-auto lg:max-w-none">
-              <SmartImage image={images[i]?.[0]} alt={a.title} className="aspect-[16/9] w-full" fallbackLabel={a.title} />
+              <SmartImage image={images[i]?.[0]} alt={a.title} className="aspect-[16/9] w-full" fallbackLabel={mainStop(a)?.name ?? a.title} kind={mainStop(a)?.kind} />
               <div className="p-5">
                 <div className="flex items-start justify-between gap-3">
                   <div>

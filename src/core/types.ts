@@ -286,6 +286,7 @@ export interface TravelerProfile {
   reducedMobility: boolean;
   budgetTier: BudgetTier;
   visitedIds: string[];
+  visitedCountries: string[]; // países declarados como conocidos (códigos ISO)
   excludedIds: string[];
   lovedIds: string[];
   pendingIds: string[];

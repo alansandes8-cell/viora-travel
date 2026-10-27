@@ -150,6 +150,7 @@ export function affinityOf(dest: Destination, profile: TravelerProfile): number 
     if (profile.beachPrefs.waves) s += (2 - dest.beach.calm) * 0.8;
   }
   if (profile.visitedIds.includes(dest.id) && !profile.lovedIds.includes(dest.id)) s -= profile.includeKnown ? 1 : 4;
+  else if ((profile.visitedCountries ?? []).includes(dest.countryCode) && !profile.wishIds.includes(dest.id)) s -= 1.5;
   if (profile.lovedIds.includes(dest.id) && profile.includeKnown) s += 1;
   if (profile.firstTimeEurope && dest.firstTimerFriendly) s += 1;
   if (!profile.firstTimeEurope && (profile.interests.offbeat ?? 0) > 0.4 && dest.tranquility >= 3) s += 0.5;

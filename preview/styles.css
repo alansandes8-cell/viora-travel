@@ -215,3 +215,83 @@ tr.total td { font-weight: 800; color: var(--ink); border-bottom: 0; }
   .change-row { flex-direction: column; }
 }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+
+/* Emojis, juego y postales */
+.tile-emoji { font-size: 1.8rem; line-height: 1; }
+.choice-emoji { font-size: 1.6rem; line-height: 1; margin-bottom: 2px; }
+.choice, .chip, .tot-opt, .tot-both { transition: transform 0.15s, box-shadow 0.15s; }
+.choice:active, .chip:active, .tot-opt:active { transform: scale(0.96); }
+.choice.on .choice-emoji { animation: pop 0.35s ease; }
+
+.passport { list-style: none; margin: 0; padding: 0; display: flex; gap: 6px; flex-wrap: wrap; }
+.passport li { width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; border: 2px dashed var(--line); color: var(--muted); font-weight: 800; font-size: 0.8rem; background: var(--surface); }
+.passport li.now { border: 2px solid var(--teal); color: var(--teal); }
+.passport li.done { border: 2px solid var(--teal); background: color-mix(in srgb, var(--teal) 14%, var(--surface)); font-size: 1.05rem; animation: stamp 0.4s ease; transform: rotate(-8deg); }
+
+.tot-list { display: grid; gap: 10px; }
+.tot { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); gap: 8px; align-items: stretch; }
+.tot-opt { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 12px 10px; display: grid; justify-items: center; gap: 4px; font-weight: 700; color: var(--ink); text-align: center; }
+.tot-emoji { font-size: 2rem; line-height: 1; }
+.tot-opt.on { border: 2px solid var(--teal); padding: 11px 9px; background: color-mix(in srgb, var(--teal) 10%, var(--surface)); box-shadow: 0 6px 16px -10px var(--teal); }
+.tot-opt.on .tot-emoji { animation: pop 0.35s ease; }
+.tot-both { align-self: center; background: var(--sand); border: 1px solid var(--line); border-radius: 999px; padding: 6px 10px; font-size: 0.78rem; font-weight: 800; color: var(--muted); }
+.tot-both.on { background: var(--purple); border-color: var(--purple); color: #fff; }
+
+/* Botonera del cuestionario siempre visible abajo */
+.wizard { padding-bottom: 110px; }
+.wizard-nav { position: fixed; left: 0; right: 0; bottom: 0; z-index: 30; background: color-mix(in srgb, var(--surface) 94%, transparent); backdrop-filter: blur(8px); border-top: 1px solid var(--line); padding: 10px max(16px, env(safe-area-inset-right, 0px)) calc(10px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)); }
+.wizard-nav-in { max-width: 728px; margin: 0 auto; display: flex; justify-content: space-between; gap: 10px; }
+.wizard-nav-in .btn:last-child { flex: 1; max-width: 320px; }
+
+.alt-band { position: relative; overflow: hidden; min-height: 170px; }
+.alt-band > * { position: relative; }
+.alt-band > .alt-photo { position: absolute; inset: 0; width: 100%; height: 100%; }
+.alt-band::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, transparent 35%, rgba(27, 42, 74, 0.6)); pointer-events: none; }
+.alt-band .labels, .alt-band .alt-dest, .alt-band .alt-thumbs { z-index: 1; }
+.alt-dest { text-shadow: 0 2px 8px rgba(0, 0, 0, 0.35); }
+.alt-thumbs { display: flex; gap: 6px; }
+.alt-thumbs .thumb { width: 54px; height: 40px; border-radius: 8px; border: 2px solid #fff; }
+.alt:hover .alt-photo { transform: scale(1.04); }
+.alt-photo { transition: transform 0.4s; }
+
+.gallery { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(220px, 1fr); gap: 12px; overflow-x: auto; scroll-snap-type: x mandatory; padding-bottom: 4px; }
+.gallery figure { scroll-snap-align: start; }
+@media (max-width: 480px) { .gallery { grid-auto-columns: 72%; } }
+.gallery figure { margin: 0; overflow: hidden; }
+.gallery svg { display: block; width: 100%; height: auto; aspect-ratio: 8 / 5; }
+.gallery figcaption { padding: 10px 12px; }
+
+.persona { background: var(--surface); border: 1px solid var(--line); border-radius: 24px; padding: 20px; display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 14px 18px; align-items: center; }
+.persona-badge { width: 84px; height: 84px; border-radius: 50%; display: grid; place-items: center; font-size: 2.8rem; background: conic-gradient(var(--teal), var(--cyan), var(--purple), var(--coral), var(--orange), var(--teal)); box-shadow: inset 0 0 0 6px var(--surface); animation: pop 0.6s ease; }
+.persona-text { display: grid; gap: 4px; }
+.traits { grid-column: 1 / -1; list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; }
+.traits li span { font-size: 0.78rem; font-weight: 800; color: var(--ink); }
+.traits .bar { height: 8px; }
+.grow { height: 100%; border-radius: 4px; animation: grow 0.9s ease both; transform-origin: left; }
+.persona.compact { padding: 14px 16px; }
+@media (max-width: 480px) { .persona.compact .traits { display: none; } }
+.persona.compact .persona-badge { width: 60px; height: 60px; font-size: 2rem; }
+
+.reveal { max-width: 720px; padding-block: 32px 48px; display: grid; gap: 18px; justify-items: center; text-align: center; position: relative; }
+.reveal .persona { text-align: left; width: 100%; }
+.reveal-kicker { font-family: var(--display); font-size: 1.3rem; color: var(--ink); animation: pop 0.5s ease; }
+.confetti { position: fixed; inset: 0; pointer-events: none; overflow: hidden; z-index: 40; }
+.confetti i { position: absolute; top: -12px; width: 9px; height: 14px; opacity: 0; animation-name: fall; animation-timing-function: linear; animation-fill-mode: forwards; }
+
+@keyframes pop { 0% { transform: scale(0.6); } 60% { transform: scale(1.15); } 100% { transform: scale(1); } }
+@keyframes stamp { 0% { transform: scale(1.6) rotate(-20deg); opacity: 0; } 100% { transform: scale(1) rotate(-8deg); opacity: 1; } }
+@keyframes grow { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+@keyframes fall { 0% { opacity: 1; transform: translateY(0) rotate(0); } 100% { opacity: 0.9; transform: translateY(105vh) rotate(540deg); } }
+
+@media (max-width: 860px) {
+  .traits { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 480px) {
+  .tot { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .tot-both { grid-column: 1 / -1; grid-row: 2; justify-self: center; }
+  .passport li { width: 28px; height: 28px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; }
+  .confetti { display: none; }
+}

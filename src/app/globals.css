@@ -113,3 +113,50 @@ h3,
     break-inside: avoid;
   }
 }
+
+/* Juego: sellos, pop, barras y confeti (se desactivan con «reducir movimiento») */
+.pop {
+  animation: pop 350ms ease both;
+}
+.stamp {
+  animation: stamp 400ms ease both;
+}
+.grow-x {
+  transform-origin: left;
+  animation: grow-x 900ms ease both;
+}
+@keyframes pop {
+  0% { transform: scale(0.6); }
+  60% { transform: scale(1.15); }
+  100% { transform: scale(1); }
+}
+@keyframes stamp {
+  0% { transform: scale(1.6) rotate(-20deg); opacity: 0; }
+  100% { transform: scale(1) rotate(-6deg); opacity: 1; }
+}
+@keyframes grow-x {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+.confetti {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+  z-index: 60;
+}
+.confetti i {
+  position: absolute;
+  top: -12px;
+  width: 9px;
+  height: 14px;
+  opacity: 0;
+  animation: fall linear forwards;
+}
+@keyframes fall {
+  0% { opacity: 1; transform: translateY(0) rotate(0); }
+  100% { opacity: 0.9; transform: translateY(105vh) rotate(540deg); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .confetti { display: none; }
+}

@@ -6,13 +6,15 @@
  */
 import * as React from "react";
 import { createRoot } from "react-dom/client";
-import { BUDGET_TIER_DEFS, MONTHS_ES, PRIORITY_DEFS, TRIP_STYLE_DEFS } from "@/core/catalog";
+import { BUDGET_TIER_DEFS, LODGING_EMOJI, MONTHS_ES, PARTY_EMOJI, PRIORITY_DEFS, TRIP_STYLE_DEFS } from "@/core/catalog";
+import { THIS_OR_THAT, travelerPersona, type Persona } from "@/core/game";
+import { Postcard } from "@/components/postcard";
 import { applyChanges, parseChangeRequest } from "@/core/changes";
 import { KNOWN_CONNECTIONS, SEED_DESTINATIONS } from "@/core/library";
 import { generatePlan, selectAlternative } from "@/core/plan";
 import { buildProfile } from "@/core/profile";
 import { pickSmartQuestions } from "@/core/questions";
-import { toClientProposal, type ClientProposal } from "@/core/sanitize";
+import { mainStop, toClientProposal, type ClientProposal } from "@/core/sanitize";
 import { whatsappSummary } from "@/core/summary";
 import { CRITERIA, CRITERIA_LABELS, VERIFICATION_LABELS, type IntakeAnswers, type PlanDocument, type Priority, type TripStyle } from "@/core/types";
 
@@ -42,7 +44,7 @@ const EXAMPLE: IntakeAnswers = {
   priorities: { selected: ["rest", "few_hotel_changes", "eat_well"], ranking: ["rest", "few_hotel_changes", "eat_well"], mustHave: ["few_hotel_changes"] },
 };
 
-type View = "home" | "wizard" | "trip";
+type View = "home" | "wizard" | "reveal" | "trip";
 type Tab = "alternativas" | "comparar" | "itinerario" | "compartir" | "agencia";
 
 function toggle<T>(l: T[], v: T): T[] {
@@ -67,9 +69,10 @@ function App() {
     setDoc(generatePlan(a, ctx));
     setIsExample(false);
     setTab("alternativas");
-    setView("trip");
+    setView("reveal");
     window.scrollTo(0, 0);
   };
+  const persona = useMemo(() => travelerPersona(buildProfile(answers, SEED_DESTINATIONS)), [answers]);
 
   return (
     <>
@@ -92,11 +95,20 @@ function App() {
       </header>
       <div className="preview-note">
         <div className="wrap">
-          <strong>Vista previa.</strong> El motor de recomendación es el real y corre en tu navegador. No incluye base de datos, panel de la agencia, fotos, IA ni envíos: eso funciona en la plataforma instalada.
+          <strong>Vista previa.</strong> El motor de recomendación es el real y corre en tu navegador. Las imágenes son ilustraciones: en la plataforma instalada se muestran fotos reales de cada destino. No incluye base de datos, panel de la agencia, IA ni envíos.
         </div>
       </div>
       {view === "home" && <Home onStart={start} onExample={() => setView("trip")} />}
       {view === "wizard" && <Wizard initial={answers} onDone={finish} onCancel={() => setView("trip")} />}
+      {view === "reveal" && (
+        <Reveal
+          persona={persona}
+          onContinue={() => {
+            setView("trip");
+            window.scrollTo(0, 0);
+          }}
+        />
+      )}
       {view === "trip" && (
         <Trip
           doc={doc}
@@ -105,6 +117,7 @@ function App() {
           tab={tab}
           setTab={setTab}
           isExample={isExample}
+          persona={persona}
           onChange={setDoc}
           onRestart={start}
         />
@@ -144,7 +157,7 @@ function Home({ onStart, onExample }: { onStart: () => void; onExample: () => vo
       <div className="tiles">
         {TRIP_STYLE_DEFS.slice(0, 8).map((s) => (
           <button key={s.id} className={`tile acc-${s.accent}`} onClick={onStart}>
-            <span className="tile-bar" />
+            <span className="tile-emoji" aria-hidden="true">{s.emoji}</span>
             <span className="tile-title">{s.label}</span>
             <span className="tile-hint">{s.hint}</span>
           </button>
@@ -156,20 +169,46 @@ function Home({ onStart, onExample }: { onStart: () => void; onExample: () => vo
 
 // ───────────────────────── Cuestionario ─────────────────────────
 
-const STEPS = ["Tipo de viaje", "Cuándo", "Desde dónde", "Con quién", "Presupuesto", "Prioridades", "Destinos conocidos", "Alojamiento y traslados", "Últimas preguntas"];
+const STEPS: { key: string; label: string; emoji: string }[] = [
+  { key: "style", label: "Tipo de viaje", emoji: "✈️" },
+  { key: "game", label: "¿Esto o aquello?", emoji: "🎲" },
+  { key: "when", label: "Cuándo", emoji: "📅" },
+  { key: "origin", label: "Desde dónde", emoji: "🛫" },
+  { key: "party", label: "Con quién", emoji: "👥" },
+  { key: "budget", label: "Presupuesto", emoji: "👛" },
+  { key: "priorities", label: "Prioridades", emoji: "⭐" },
+  { key: "history", label: "Destinos conocidos", emoji: "🗺️" },
+  { key: "stay", label: "Alojamiento y traslados", emoji: "🛏️" },
+  { key: "last", label: "Últimas preguntas", emoji: "💬" },
+];
+const LAST = STEPS.length - 1;
+
+/** Pasaporte: cada paso completado suma un sello. */
+function Passport({ step }: { step: number }) {
+  return (
+    <ol className="passport" aria-label={`Paso ${step + 1} de ${STEPS.length}`}>
+      {STEPS.map((s, i) => (
+        <li key={s.key} className={i < step ? "done" : i === step ? "now" : ""} title={s.label}>
+          <span aria-hidden="true">{i < step ? s.emoji : i + 1}</span>
+        </li>
+      ))}
+    </ol>
+  );
+}
 
 function Wizard({ initial, onDone, onCancel }: { initial: IntakeAnswers; onDone: (a: IntakeAnswers) => void; onCancel: () => void }) {
   const [a, setA] = useState<IntakeAnswers>(initial);
   const [step, setStep] = useState(0);
   const [err, setErr] = useState("");
   const set = <K extends keyof IntakeAnswers>(k: K, v: IntakeAnswers[K]) => setA((p) => ({ ...p, [k]: v }));
-  const questions = useMemo(() => (step === 8 ? pickSmartQuestions(buildProfile(a, SEED_DESTINATIONS), a) : []), [step]); // eslint-disable-line react-hooks/exhaustive-deps
+  const key = STEPS[step].key;
+  const questions = useMemo(() => (key === "last" ? pickSmartQuestions(buildProfile(a, SEED_DESTINATIONS), a) : []), [step]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const next = () => {
-    if (step === 0 && !a.tripStyles.length && (a.dreamText ?? "").trim().length < 10) return setErr("Elegí al menos un estilo o describí tu idea.");
-    if (step === 1 && a.dates.mode === "exact" && (!a.dates.departure || !a.dates.return || a.dates.return <= a.dates.departure)) return setErr("Revisá las fechas de salida y regreso.");
+    if (key === "style" && !a.tripStyles.length && (a.dreamText ?? "").trim().length < 10) return setErr("Elegí al menos un estilo o describí tu idea.");
+    if (key === "when" && a.dates.mode === "exact" && (!a.dates.departure || !a.dates.return || a.dates.return <= a.dates.departure)) return setErr("Revisá las fechas de salida y regreso.");
     setErr("");
-    if (step < 8) {
+    if (step < LAST) {
       setStep(step + 1);
       window.scrollTo(0, 0);
     } else onDone(a);
@@ -179,22 +218,21 @@ function Wizard({ initial, onDone, onCancel }: { initial: IntakeAnswers; onDone:
     <main className="wrap wizard">
       <div className="progress-head">
         <span>
-          Paso {step + 1} de {STEPS.length} · {STEPS[step]}
+          {STEPS[step].emoji} Paso {step + 1} de {STEPS.length} · {STEPS[step].label}
         </span>
         <button className="link" onClick={onCancel}>
           Cancelar
         </button>
       </div>
-      <div className="progress">
-        <div style={{ width: `${((step + 1) / STEPS.length) * 100}%` }} />
-      </div>
+      <Passport step={step} />
 
-      {step === 0 && (
+      {key === "style" && (
         <section className="step">
           <h1>¿Qué tipo de viaje soñás?</h1>
           <div className="choice-grid">
             {TRIP_STYLE_DEFS.map((s) => (
               <button key={s.id} className={`choice acc-${s.accent} ${a.tripStyles.includes(s.id) ? "on" : ""}`} aria-pressed={a.tripStyles.includes(s.id)} onClick={() => set("tripStyles", toggle<TripStyle>(a.tripStyles, s.id))}>
+                <span className="choice-emoji" aria-hidden="true">{s.emoji}</span>
                 <b>{s.label}</b>
                 <small>{s.hint}</small>
               </button>
@@ -207,7 +245,38 @@ function Wizard({ initial, onDone, onCancel }: { initial: IntakeAnswers; onDone:
         </section>
       )}
 
-      {step === 1 && (
+      {key === "game" && (
+        <section className="step">
+          <h1>¿Esto o aquello?</h1>
+          <p className="muted">Elegí rápido, sin pensar mucho. Si te gustan los dos, tocá «¡Los dos!».</p>
+          <div className="tot-list">
+            {THIS_OR_THAT.map((q) => {
+              const cur = a.extra[q.id];
+              const pick = (v: string) => set("extra", { ...a.extra, [q.id]: cur === v ? "" : v });
+              return (
+                <div key={q.id} className="tot">
+                  <button className={`tot-opt ${cur === "a" ? "on" : ""}`} aria-pressed={cur === "a"} onClick={() => pick("a")}>
+                    <span className="tot-emoji" aria-hidden="true">{q.a.emoji}</span>
+                    {q.a.label}
+                  </button>
+                  <button className={`tot-both ${cur === "both" ? "on" : ""}`} aria-pressed={cur === "both"} onClick={() => pick("both")}>
+                    ¡Los dos!
+                  </button>
+                  <button className={`tot-opt ${cur === "b" ? "on" : ""}`} aria-pressed={cur === "b"} onClick={() => pick("b")}>
+                    <span className="tot-emoji" aria-hidden="true">{q.b.emoji}</span>
+                    {q.b.label}
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+          <p className="muted small">
+            {THIS_OR_THAT.filter((q) => a.extra[q.id]).length} de {THIS_OR_THAT.length} respondidas · es opcional
+          </p>
+        </section>
+      )}
+
+      {key === "when" && (
         <section className="step">
           <h1>¿Cuándo querés viajar?</h1>
           <div className="seg">
@@ -265,7 +334,7 @@ function Wizard({ initial, onDone, onCancel }: { initial: IntakeAnswers; onDone:
         </section>
       )}
 
-      {step === 2 && (
+      {key === "origin" && (
         <section className="step">
           <h1>¿Desde dónde salís?</h1>
           <div className="two">
@@ -282,7 +351,7 @@ function Wizard({ initial, onDone, onCancel }: { initial: IntakeAnswers; onDone:
         </section>
       )}
 
-      {step === 3 && (
+      {key === "party" && (
         <section className="step">
           <h1>¿Con quién viajás?</h1>
           <div className="chips">
@@ -295,7 +364,7 @@ function Wizard({ initial, onDone, onCancel }: { initial: IntakeAnswers; onDone:
               ] as const
             ).map(([v, l]) => (
               <button key={v} className={a.party.type === v ? "chip on" : "chip"} onClick={() => set("party", { ...a.party, type: v, adults: v === "solo" ? 1 : Math.max(2, a.party.adults) })}>
-                {l}
+                {PARTY_EMOJI[v]} {l}
               </button>
             ))}
           </div>
@@ -325,13 +394,14 @@ function Wizard({ initial, onDone, onCancel }: { initial: IntakeAnswers; onDone:
         </section>
       )}
 
-      {step === 4 && (
+      {key === "budget" && (
         <section className="step">
           <h1>¿Cuál es tu presupuesto?</h1>
           <p className="muted">Es una orientación, no una cotización. Se interpreta según la región.</p>
           <div className="choice-grid">
             {BUDGET_TIER_DEFS.map((t) => (
               <button key={t.id} className={`choice acc-orange ${a.budget.tier === t.id ? "on" : ""}`} onClick={() => set("budget", { ...a.budget, tier: t.id })}>
+                <span className="choice-emoji" aria-hidden="true">{t.emoji}</span>
                 <b>{t.label}</b>
                 <small>{t.hint}</small>
               </button>
@@ -340,7 +410,7 @@ function Wizard({ initial, onDone, onCancel }: { initial: IntakeAnswers; onDone:
         </section>
       )}
 
-      {step === 5 && (
+      {key === "priorities" && (
         <section className="step">
           <h1>¿Qué cosas son importantes para vos?</h1>
           <div className="chips">
@@ -355,7 +425,7 @@ function Wizard({ initial, onDone, onCancel }: { initial: IntakeAnswers; onDone:
                     set("priorities", { selected, ranking: selected, mustHave: a.priorities.mustHave.filter((x) => selected.includes(x)) });
                   }}
                 >
-                  {p.label}
+                  {p.emoji} {p.label}
                 </button>
               );
             })}
@@ -368,7 +438,7 @@ function Wizard({ initial, onDone, onCancel }: { initial: IntakeAnswers; onDone:
                   const must = a.priorities.mustHave.includes(id);
                   return (
                     <button key={id} className={must ? "chip on coral" : "chip"} disabled={!must && a.priorities.mustHave.length >= 3} onClick={() => set("priorities", { ...a.priorities, mustHave: toggle(a.priorities.mustHave, id) })}>
-                      {must ? "★ " : ""}
+                      {must ? "★ " : `${PRIORITY_DEFS.find((p) => p.id === id)?.emoji} `}
                       {PRIORITY_DEFS.find((p) => p.id === id)?.label}
                     </button>
                   );
@@ -379,7 +449,7 @@ function Wizard({ initial, onDone, onCancel }: { initial: IntakeAnswers; onDone:
         </section>
       )}
 
-      {step === 6 && (
+      {key === "history" && (
         <section className="step">
           <h1>¿Qué destinos ya conocés?</h1>
           <p className="muted">Separados por coma. Así evitamos recomendarte lo mismo de siempre.</p>
@@ -411,7 +481,7 @@ function Wizard({ initial, onDone, onCancel }: { initial: IntakeAnswers; onDone:
         </section>
       )}
 
-      {step === 7 && (
+      {key === "stay" && (
         <section className="step">
           <h1>Alojamiento y traslados</h1>
           <div className="chips">
@@ -425,7 +495,7 @@ function Wizard({ initial, onDone, onCancel }: { initial: IntakeAnswers; onDone:
               ] as const
             ).map(([v, l]) => (
               <button key={v} className={a.stay.lodgingTypes.includes(v) ? "chip on cyan" : "chip"} onClick={() => set("stay", { ...a.stay, lodgingTypes: toggle(a.stay.lodgingTypes, v) })}>
-                {l}
+                {LODGING_EMOJI[v]} {l}
               </button>
             ))}
           </div>
@@ -435,7 +505,7 @@ function Wizard({ initial, onDone, onCancel }: { initial: IntakeAnswers; onDone:
         </section>
       )}
 
-      {step === 8 && (
+      {key === "last" && (
         <section className="step">
           <h1>Unas últimas preguntas</h1>
           <p className="muted">Solo las que pueden cambiar la recomendación, elegidas según tus respuestas.</p>
@@ -463,12 +533,21 @@ function Wizard({ initial, onDone, onCancel }: { initial: IntakeAnswers; onDone:
 
       {err && <p className="note bad">{err}</p>}
       <div className="wizard-nav">
-        <button className="btn ghost" disabled={step === 0} onClick={() => setStep(step - 1)}>
-          Atrás
-        </button>
-        <button className="btn" onClick={next}>
-          {step === 8 ? "Ver mis alternativas" : "Siguiente"}
-        </button>
+        <div className="wizard-nav-in">
+          <button
+            className="btn ghost"
+            disabled={step === 0}
+            onClick={() => {
+              setStep(step - 1);
+              window.scrollTo(0, 0);
+            }}
+          >
+            Atrás
+          </button>
+          <button className="btn" onClick={next}>
+            {step === LAST ? "Descubrir mi perfil ✨" : "Siguiente →"}
+          </button>
+        </div>
       </div>
     </main>
   );
@@ -485,6 +564,7 @@ function Trip({
   tab,
   setTab,
   isExample,
+  persona,
   onChange,
   onRestart,
 }: {
@@ -494,6 +574,7 @@ function Trip({
   tab: Tab;
   setTab: (t: Tab) => void;
   isExample: boolean;
+  persona: Persona;
   onChange: (d: PlanDocument) => void;
   onRestart: () => void;
 }) {
@@ -535,12 +616,82 @@ function Trip({
         </div>
       </section>
       <div className="wrap trip-body">
-        {tab === "alternativas" && <Alternatives p={p} onChoose={choose} />}
+        {tab === "alternativas" && (
+          <>
+            <PersonaCard persona={persona} compact />
+            <Alternatives p={p} onChoose={choose} />
+          </>
+        )}
         {tab === "comparar" && <Compare p={p} onChoose={choose} />}
         {tab === "itinerario" && <Itinerary p={p} doc={doc} answers={answers} onChange={onChange} />}
         {tab === "compartir" && <Share p={p} />}
         {tab === "agencia" && <Agency doc={doc} />}
       </div>
+    </main>
+  );
+}
+
+// ───────────────────────── Juego: perfil viajero ─────────────────────────
+
+const CONFETTI_COLORS = ["var(--teal)", "var(--orange)", "var(--coral)", "var(--purple)", "var(--cyan)"];
+
+function Confetti() {
+  const pieces = useMemo(
+    () =>
+      Array.from({ length: 70 }, (_, i) => ({
+        left: Math.random() * 100,
+        delay: Math.random() * 0.8,
+        dur: 2.2 + Math.random() * 1.6,
+        rot: Math.random() * 360,
+        color: CONFETTI_COLORS[i % CONFETTI_COLORS.length],
+        round: i % 3 === 0,
+      })),
+    [],
+  );
+  return (
+    <div className="confetti" aria-hidden="true">
+      {pieces.map((c, i) => (
+        <i key={i} style={{ left: `${c.left}%`, animationDelay: `${c.delay}s`, animationDuration: `${c.dur}s`, background: c.color, transform: `rotate(${c.rot}deg)`, borderRadius: c.round ? "50%" : "2px" }} />
+      ))}
+    </div>
+  );
+}
+
+function PersonaCard({ persona, compact = false }: { persona: Persona; compact?: boolean }) {
+  return (
+    <section className={`persona ${compact ? "compact" : ""}`} aria-label="Tu perfil viajero">
+      <div className="persona-badge" aria-hidden="true">
+        {persona.emoji}
+      </div>
+      <div className="persona-text">
+        <p className="eyebrow teal">Tu perfil viajero</p>
+        <h2>{persona.name}</h2>
+        <p className="muted">{persona.tagline}</p>
+      </div>
+      <ul className="traits">
+        {persona.traits.map((t, i) => (
+          <li key={t.label}>
+            <span>{t.label}</span>
+            <div className="bar">
+              <div className="grow" style={{ width: `${Math.max(4, t.value)}%`, background: CONFETTI_COLORS[i], animationDelay: `${0.15 * i}s` }} />
+            </div>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+function Reveal({ persona, onContinue }: { persona: Persona; onContinue: () => void }) {
+  return (
+    <main className="wrap reveal">
+      <Confetti />
+      <p className="reveal-kicker">🎉 ¡Listo! Ya te conocemos un poco más</p>
+      <PersonaCard persona={persona} />
+      <p className="muted">Con este perfil armamos tres alternativas distintas, sin repetir los lugares que ya conocés.</p>
+      <button className="btn big" onClick={onContinue}>
+        Ver mis 3 alternativas →
+      </button>
     </main>
   );
 }
@@ -569,6 +720,7 @@ function Alternatives({ p, onChoose }: { p: ClientProposal; onChoose: (id: strin
           return (
             <article key={a.id} className={`card alt acc-${ACC[i]} ${sel ? "sel" : ""}`}>
               <div className="alt-band">
+                <Postcard name={mainStop(a)?.name ?? a.title} kind={mainStop(a)?.kind ?? "city"} className="alt-photo" title={false} />
                 <div className="labels">
                   {a.labels.map((l) => (
                     <span key={l} className="pill">
@@ -577,6 +729,13 @@ function Alternatives({ p, onChoose }: { p: ClientProposal; onChoose: (id: strin
                   ))}
                 </div>
                 <span className="alt-dest">{a.stops.map((s) => s.name).join(" · ")}</span>
+                {a.stops.length > 1 && (
+                  <div className="alt-thumbs">
+                    {a.stops.filter((s) => s !== mainStop(a)).slice(0, 3).map((s) => (
+                      <Postcard key={s.name} name={s.name} kind={s.kind} label={false} title={false} className="thumb" />
+                    ))}
+                  </div>
+                )}
               </div>
               <div className="alt-body">
                 <div className="alt-top">
@@ -794,6 +953,17 @@ function Itinerary({ p, doc, answers, onChange }: { p: ClientProposal; doc: Plan
             </>
           )}
         </div>
+      </div>
+
+      <div className="gallery">
+        {it.stops.map((s) => (
+          <figure key={s.id} className="card">
+            <Postcard name={s.name} kind={s.kind} title={false} />
+            <figcaption>
+              <b>{s.name}</b> <span className="muted">· {s.nights} noches</span>
+            </figcaption>
+          </figure>
+        ))}
       </div>
 
       <h2>Día por día</h2>

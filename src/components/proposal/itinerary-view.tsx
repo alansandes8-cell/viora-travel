@@ -103,10 +103,10 @@ export function ItineraryView({
         <h2 className="text-xl font-semibold">Imaginate allá</h2>
         <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {it.stops.flatMap((s) =>
-            (stopImages[s.id] ?? []).slice(0, printMode ? 1 : 3).map((img, j) => <SmartImage key={`${s.id}-${j}`} image={img} alt={s.name} thumb className="aspect-[4/3] w-full rounded-2xl" fallbackLabel={s.name} />),
+            (stopImages[s.id] ?? []).slice(0, printMode ? 1 : 3).map((img, j) => <SmartImage key={`${s.id}-${j}`} image={img} alt={s.name} thumb className="aspect-[4/3] w-full rounded-2xl" fallbackLabel={s.name} kind={s.kind} />),
           )}
           {it.stops.every((s) => !(stopImages[s.id] ?? []).length) &&
-            it.stops.map((s) => <SmartImage key={s.id} image={null} alt={s.name} className="aspect-[4/3] w-full rounded-2xl" fallbackLabel={s.name} />)}
+            it.stops.map((s) => <SmartImage key={s.id} image={null} alt={s.name} className="aspect-[4/3] w-full rounded-2xl" fallbackLabel={s.name} kind={s.kind} />)}
         </div>
         {!printMode && (
           <div className="mt-6">

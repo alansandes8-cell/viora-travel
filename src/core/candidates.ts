@@ -24,10 +24,47 @@ function allowedByWish(dests: Destination[], profile: TravelerProfile): boolean 
   return false;
 }
 
-/** Genera candidatos (destino único, combinaciones de dos y rutas multidestino). */
-export function generateCandidates(profile: TravelerProfile, library: Destination[]): Candidate[] {
+/** ¿El cliente ya conoce este destino (por ciudad, o por país en sus destinos más clásicos)? */
+export function isKnown(d: Destination, profile: TravelerProfile): boolean {
+  if (profile.wishIds.includes(d.id)) return false;
+  if (profile.visitedIds.includes(d.id)) return true;
+  return (profile.visitedCountries ?? []).includes(d.countryCode) && !!d.firstTimerFriendly;
+}
+
+/**
+ * Genera candidatos. Los lugares que el cliente ya conoce se excluyen, salvo que haya pedido
+ * incluirlos o que sin ellos no alcancen las opciones (en ese caso se marca `knownIncluded`).
+ */
+export function generateCandidates(profile: TravelerProfile, library: Destination[]): Candidate[] & { knownIncluded?: boolean } {
+  const allowed = library.filter((d) => !profile.excludedIds.includes(d.id));
+  const fresh = allowed.filter((d) => profile.includeKnown || !isKnown(d, profile));
+  const strict = buildCandidates(profile, fresh);
+  if (profile.includeKnown || primaries(strict) >= 3) return strict;
+
+  // Antes de repetir lugares conocidos: estadías más largas en lugares nuevos y,
+  // como mucho, un lugar conocido como escala breve (nunca como destino principal).
+  const merged = new Map(strict.map((c) => [c.key, c]));
+  for (const c of buildCandidates(profile, fresh, 1.8)) if (!merged.has(c.key)) merged.set(c.key, c);
+  if (primaries([...merged.values()]) >= 3) return [...merged.values()];
+  for (const c of buildCandidates(profile, allowed)) if (!merged.has(c.key) && !isKnown(primaryOf(c), profile)) merged.set(c.key, c);
+  const widened = [...merged.values()];
+  if (primaries(widened) >= 3) return widened;
+
+  const relaxed = buildCandidates(profile, allowed) as Candidate[] & { knownIncluded?: boolean };
+  relaxed.knownIncluded = true;
+  return relaxed;
+}
+
+function primaryOf(c: Candidate): Destination {
+  return c.stops.reduce((a, b) => (b.nights > a.nights ? b : a)).dest;
+}
+
+function primaries(cs: Candidate[]): number {
+  return new Set(cs.map((c) => primaryOf(c).id)).size;
+}
+
+function buildCandidates(profile: TravelerProfile, pool: Destination[], stretch = 1): Candidate[] {
   const nights = tripNights(profile);
-  const pool = library.filter((d) => !profile.excludedIds.includes(d.id));
   const aff = new Map(pool.map((d) => [d.id, affinityOf(d, profile)]));
   const out: Candidate[] = [];
   const seen = new Set<string>();
@@ -37,10 +74,11 @@ export function generateCandidates(profile: TravelerProfile, library: Destinatio
     seen.add(key);
     out.push({ ...c, key });
   };
-  const paceFactor = profile.pace === "relaxed" ? 1.3 : profile.pace === "intense" ? 0.9 : 1.1;
+  const paceFactor = (profile.pace === "relaxed" ? 1.3 : profile.pace === "intense" ? 0.9 : 1.1) * stretch;
 
   const wantsSingle = profile.shape !== "multi" || nights <= 6;
   const wantsRoute =
+    stretch > 1 ||
     profile.shape === "multi" ||
     (profile.shape === "open" && nights >= 8 && !profile.avoidHotelChanges) ||
     (profile.shape === "single" && nights >= 16 && !profile.avoidHotelChanges);

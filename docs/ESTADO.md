@@ -31,6 +31,14 @@ Fecha: 26/10/2026. Este documento separa lo que **funciona y fue probado**, lo q
 | 23 | Costos operativos | ✅ Sección 5 |
 | 24 | Riesgos y mejoras futuras | ✅ Sección 6 |
 
+### Ajustes de experiencia (pedido de la agencia)
+
+- Botón «Siguiente» fijo abajo en todo el cuestionario (celular y escritorio).
+- Emojis en estilos de viaje, prioridades, presupuesto, acompañantes, alojamiento y transporte.
+- Juego «¿Esto o aquello?» (6 elecciones rápidas, opcional) que alimenta intereses y ritmo reales del perfil.
+- Progreso como pasaporte con sellos, tarjeta «Tu perfil viajero» y confeti al ver la propuesta (se desactiva con «reducir movimiento»).
+- Fotos: en la plataforma salen de Unsplash/Pexels/Wikimedia si hay claves; si no hay foto, se muestra una postal ilustrada del destino rotulada «Ilustración». La vista previa usa solo ilustraciones.
+
 ## 2. Funciona con alternativa manual (no se finge la integración)
 
 | Función | Situación actual | Próximo paso |
@@ -48,13 +56,13 @@ Fecha: 26/10/2026. Este documento separa lo que **funciona y fue probado**, lo q
 
 Entorno: Node 22, PostgreSQL 16 local, Chromium 1243. Resultados reales de esta sesión.
 
-**Unitarias y de escenarios** (`pnpm test`, Vitest): **39 pruebas pasan, 0 fallan**.
+**Unitarias y de escenarios** (`pnpm test`, Vitest): **43 pruebas pasan, 0 fallan** (3 de integración con la base se omiten si no hay base configurada).
 
 | Escenario del pedido | Prueba | Resultado |
 |---|---|---|
 | 1. Playa 14 noches | Destino único de playa, 3 alternativas distintas con etiquetas distintas, clima rotulado como estimación | ✅ |
 | 2. Eurotrip 21 días, primera vez | Rutas europeas multidestino, noches no uniformes, fechas consecutivas, detecta primera vez | ✅ |
-| 3. Eurotrip para quien ya conoce Madrid, París y Roma | La alternativa principal no incluye esas ciudades | ✅ |
+| 3. Eurotrip para quien ya conoce Madrid, París y Roma | **Ninguna** alternativa incluye esas ciudades (ni en el texto libre «ya conozco…», ni por país visitado); si faltan opciones nuevas, primero alarga estadías y solo como último recurso repite, con aviso a la agencia | ✅ |
 | 4. Presupuesto muy limitado | Nivel de costos menor que el promedio europeo | ✅ |
 | 5. Familiar | Incluye Orlando y advierte el calor | ✅ |
 | 6. Romántico | Destinos románticos; pregunta por el escenario | ✅ |

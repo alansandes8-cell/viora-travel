@@ -216,6 +216,13 @@ export function generatePlan(answers: IntakeAnswers, ctx: PlanContext): PlanDocu
 
   const pendingInfo: string[] = profile.missing.map((m) => m.label);
   const checks = [] as PlanDocument["checks"];
+  if ((candidates as { knownIncluded?: boolean }).knownIncluded) {
+    checks.push({
+      code: "known_included",
+      severity: "info",
+      message: "No había suficientes opciones nuevas para este perfil: algunas alternativas incluyen lugares que el cliente ya conoce.",
+    });
+  }
   if (!top.length) {
     checks.push({
       code: "no_candidates",
@@ -264,7 +271,7 @@ export function selectAlternative(doc: PlanDocument, alternativeId: string, answ
 export function refreshDerived(doc: PlanDocument, ctx: PlanContext): void {
   const it = doc.itinerary;
   const profile = doc.profile;
-  const baseChecks = doc.checks.filter((c) => c.code === "no_candidates");
+  const baseChecks = doc.checks.filter((c) => c.code === "no_candidates" || c.code === "known_included");
   if (!it) {
     doc.checks = baseChecks;
     return;

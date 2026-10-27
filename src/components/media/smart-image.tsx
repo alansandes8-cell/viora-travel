@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { ImageOff } from "lucide-react";
 import type { MediaItem } from "@/server/integrations/media";
+import type { DestinationKind } from "@/core/types";
+import { Postcard } from "@/components/postcard";
 
 type Img = Pick<MediaItem, "url" | "thumbUrl" | "title" | "attribution" | "sourceUrl" | "authorUrl" | "author" | "license" | "provider">;
 
@@ -19,6 +21,7 @@ export function SmartImage({
   eager = false,
   thumb = false,
   fallback,
+  kind,
 }: {
   image?: Img | null;
   alt: string;
@@ -28,13 +31,16 @@ export function SmartImage({
   eager?: boolean;
   thumb?: boolean;
   fallback?: React.ReactNode;
+  /** Si no hay foto, se muestra una postal ilustrada de este tipo de paisaje (rotulada «Ilustración»). */
+  kind?: DestinationKind;
 }) {
   const [failed, setFailed] = useState(false);
   if (!image || failed) {
-    if (fallback) {
+    const fb = fallback ?? (kind ? <Postcard name={fallbackLabel ?? alt} kind={kind} className="h-full w-full" /> : null);
+    if (fb) {
       return (
         <div className={`relative overflow-hidden ${className ?? ""}`} role="img" aria-label={alt}>
-          {fallback}
+          {fb}
         </div>
       );
     }

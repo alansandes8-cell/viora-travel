@@ -7,77 +7,41 @@ import {
   ArrowLeft,
   ArrowRight,
   ArrowUp,
-  Baby,
-  Building2,
   Check,
-  Compass,
-  Gem,
-  Heart,
-  Landmark,
   Loader2,
-  Mountain,
-  Palmtree,
   Plus,
-  Route,
-  Ship,
-  ShoppingBag,
   Sparkles,
-  Star,
-  Tent,
-  TrainFront,
-  User,
-  Users,
-  UtensilsCrossed,
-  Wallet,
   X,
-  Castle,
-  Globe2,
 } from "lucide-react";
 import {
   BUDGET_TIER_DEFS,
+  LODGING_EMOJI,
   LODGING_LABELS,
   MONTHS_ES,
   ORIGIN_CITIES,
+  PARTY_EMOJI,
   PRIORITY_DEFS,
+  TRANSPORT_EMOJI,
   TRANSPORT_LABELS,
   TRIP_STYLE_DEFS,
 } from "@/core/catalog";
+import { THIS_OR_THAT } from "@/core/game";
 import type { SmartQuestion } from "@/core/questions";
 import type { IntakeAnswers, LodgingType, PartyType, Priority, TransportMode, TripStyle } from "@/core/types";
 import { ACCENTS, Button, Field, Notice, cx, inputClass } from "@/components/ui";
 import { saveDraftAction, smartQuestionsAction, submitAction } from "./actions";
 
-const STYLE_ICONS: Record<TripStyle, typeof Palmtree> = {
-  beach_relax: Palmtree,
-  eurotrip: TrainFront,
-  big_cities: Building2,
-  nature_adventure: Mountain,
-  romantic: Heart,
-  honeymoon: Gem,
-  family: Baby,
-  theme_parks: Castle,
-  culture_history: Landmark,
-  gastronomy: UtensilsCrossed,
-  luxury: Star,
-  backpacker: Tent,
-  cruise: Ship,
-  shopping: ShoppingBag,
-  exotic: Globe2,
-  road_trip: Route,
-  mixed: Sparkles,
-  discover: Compass,
-};
-
 const STEPS = [
-  { key: "style", title: "¿Qué tipo de viaje soñás?", subtitle: "Elegí uno o varios estilos, o contalo con tus palabras." },
-  { key: "dates", title: "¿Cuándo querés viajar?", subtitle: "Si todavía no tenés fechas, no pasa nada: exploramos temporadas." },
-  { key: "origin", title: "¿Desde dónde salís?", subtitle: "Nos ayuda a estimar tiempos de vuelo y conexiones." },
-  { key: "party", title: "¿Con quién viajás?", subtitle: "Solo lo necesario para adaptar el plan." },
-  { key: "budget", title: "¿Cuál es tu presupuesto?", subtitle: "Es una orientación inicial, no una cotización." },
-  { key: "priorities", title: "¿Qué cosas son importantes para vos?", subtitle: "Elegí, ordená y marcá lo indispensable." },
-  { key: "history", title: "¿Qué destinos ya conocés?", subtitle: "Así evitamos recomendarte lo mismo de siempre." },
-  { key: "stay", title: "Alojamiento y traslados", subtitle: "Contanos cómo te gusta viajar." },
-  { key: "smart", title: "Unas últimas preguntas", subtitle: "Solo las que pueden cambiar la recomendación." },
+  { key: "style", emoji: "✈️", title: "¿Qué tipo de viaje soñás?", subtitle: "Elegí uno o varios estilos, o contalo con tus palabras." },
+  { key: "game", emoji: "🎲", title: "¿Esto o aquello?", subtitle: "Elegí rápido, sin pensarlo mucho. Si te gustan los dos, tocá «¡Los dos!». Es opcional." },
+  { key: "dates", emoji: "📅", title: "¿Cuándo querés viajar?", subtitle: "Si todavía no tenés fechas, no pasa nada: exploramos temporadas." },
+  { key: "origin", emoji: "🛫", title: "¿Desde dónde salís?", subtitle: "Nos ayuda a estimar tiempos de vuelo y conexiones." },
+  { key: "party", emoji: "👥", title: "¿Con quién viajás?", subtitle: "Solo lo necesario para adaptar el plan." },
+  { key: "budget", emoji: "👛", title: "¿Cuál es tu presupuesto?", subtitle: "Es una orientación inicial, no una cotización." },
+  { key: "priorities", emoji: "⭐", title: "¿Qué cosas son importantes para vos?", subtitle: "Elegí, ordená y marcá lo indispensable." },
+  { key: "history", emoji: "🗺️", title: "¿Qué destinos ya conocés?", subtitle: "Así evitamos recomendarte lo mismo de siempre." },
+  { key: "stay", emoji: "🛏️", title: "Alojamiento y traslados", subtitle: "Contanos cómo te gusta viajar." },
+  { key: "smart", emoji: "💬", title: "Unas últimas preguntas", subtitle: "Solo las que pueden cambiar la recomendación." },
 ] as const;
 
 const DEFAULTS: IntakeAnswers = {
@@ -243,7 +207,6 @@ export function Wizard({
     });
   }
 
-  const progress = ((step + 1) / STEPS.length) * 100;
   const S = STEPS[step];
 
   if (submitting) {
@@ -273,9 +236,20 @@ export function Wizard({
           </span>
           <span aria-live="polite">{saved === "saving" ? "Guardando…" : saved === "saved" ? "Guardado" : saved === "error" ? "No se pudo guardar" : ""}</span>
         </div>
-        <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-sand-2" aria-hidden>
-          <div className="h-full rounded-full bg-teal-brand transition-all duration-300" style={{ width: `${progress}%` }} />
-        </div>
+        <ol className="mt-3 flex flex-wrap gap-1.5" aria-hidden>
+          {STEPS.map((x, i) => (
+            <li
+              key={x.key}
+              title={x.title}
+              className={cx(
+                "flex h-7 w-7 items-center justify-center rounded-full border-2 text-xs font-bold sm:h-8 sm:w-8",
+                i < step ? "stamp -rotate-6 border-teal-brand bg-teal-brand/10 text-base" : i === step ? "border-teal-brand bg-white text-teal-brand" : "border-dashed border-line bg-white text-muted",
+              )}
+            >
+              {i < step ? x.emoji : i + 1}
+            </li>
+          ))}
+        </ol>
       </div>
 
       <h1 ref={headingRef} tabIndex={-1} className="text-3xl font-semibold outline-none sm:text-4xl">
@@ -288,7 +262,6 @@ export function Wizard({
           <div className="space-y-6">
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
               {TRIP_STYLE_DEFS.map((s) => {
-                const Icon = STYLE_ICONS[s.id];
                 const on = a.tripStyles.includes(s.id);
                 return (
                   <button
@@ -301,8 +274,8 @@ export function Wizard({
                       on ? cx("border-2 shadow-soft", ACCENTS[s.accent].border) : "border-line hover:border-navy/30",
                     )}
                   >
-                    <span className={cx("flex h-10 w-10 items-center justify-center rounded-xl", ACCENTS[s.accent].soft, ACCENTS[s.accent].text)}>
-                      <Icon className="h-5 w-5" aria-hidden />
+                    <span className={cx("flex h-11 w-11 items-center justify-center rounded-xl text-2xl", ACCENTS[s.accent].soft, on && "pop")} aria-hidden>
+                      {s.emoji}
                     </span>
                     <span className="font-display text-[15px] font-semibold leading-tight text-navy">{s.label}</span>
                     <span className="text-xs text-muted">{s.hint}</span>
@@ -314,6 +287,39 @@ export function Wizard({
             <Field label="O contanos tu idea con tus palabras" hint="Por ejemplo: «Quiero 14 días de playa con agua turquesa y buena comida» o «Ya conozco Madrid y Roma, quiero algo distinto»." htmlFor="dream" error={errors.style}>
               <textarea id="dream" rows={4} maxLength={1500} className={inputClass} value={a.dreamText ?? ""} onChange={(e) => set("dreamText", e.target.value)} placeholder="Imaginá tu viaje ideal…" />
             </Field>
+          </div>
+        )}
+
+        {S.key === "game" && (
+          <div className="space-y-3">
+            {THIS_OR_THAT.map((q) => {
+              const cur = a.extra[q.id];
+              const pick = (v: string) => set("extra", { ...a.extra, [q.id]: cur === v ? "" : v });
+              const opt = (side: "a" | "b") => {
+                const o = q[side];
+                const on = cur === side;
+                return (
+                  <button type="button" aria-pressed={on} onClick={() => pick(side)} className={cx("flex flex-col items-center gap-1 rounded-2xl border bg-white p-3 text-center font-semibold text-navy transition-transform active:scale-95", on ? "border-2 border-teal-brand bg-teal-brand/10 shadow-soft" : "border-line")}>
+                    <span className={cx("text-3xl leading-none", on && "pop")} aria-hidden>
+                      {o.emoji}
+                    </span>
+                    {o.label}
+                  </button>
+                );
+              };
+              return (
+                <div key={q.id} className="grid grid-cols-2 items-center gap-2 sm:grid-cols-[1fr_auto_1fr]">
+                  {opt("a")}
+                  <button type="button" aria-pressed={cur === "both"} onClick={() => pick("both")} className={cx("col-span-2 row-start-2 justify-self-center rounded-full border px-3 py-1 text-xs font-bold sm:col-span-1 sm:row-start-1 sm:col-start-2", cur === "both" ? "border-purple-brand bg-purple-brand text-white" : "border-line bg-sand-2 text-muted")}>
+                    ¡Los dos!
+                  </button>
+                  {opt("b")}
+                </div>
+              );
+            })}
+            <p className="text-sm text-muted">
+              {THIS_OR_THAT.filter((q) => a.extra[q.id]).length} de {THIS_OR_THAT.length} respondidas
+            </p>
           </div>
         )}
 
@@ -456,14 +462,14 @@ export function Wizard({
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
               {(
                 [
-                  ["solo", "Solo", User],
-                  ["couple", "En pareja", Heart],
-                  ["friends", "Con amigos", Users],
-                  ["family", "En familia", Baby],
-                  ["group", "Grupo organizado", Users],
-                  ["other", "Otro", Sparkles],
-                ] as [PartyType, string, typeof User][]
-              ).map(([v, l, Icon]) => (
+                  ["solo", "Solo"],
+                  ["couple", "En pareja"],
+                  ["friends", "Con amigos"],
+                  ["family", "En familia"],
+                  ["group", "Grupo organizado"],
+                  ["other", "Otro"],
+                ] as [PartyType, string][]
+              ).map(([v, l]) => (
                 <button
                   key={v}
                   type="button"
@@ -471,7 +477,9 @@ export function Wizard({
                   onClick={() => set("party", { ...a.party, type: v, adults: v === "solo" ? 1 : v === "couple" ? 2 : Math.max(a.party.adults, 2) })}
                   className={cx("flex items-center gap-3 rounded-2xl border bg-white p-4 text-left", a.party.type === v ? "border-2 border-coral-brand shadow-soft" : "border-line")}
                 >
-                  <Icon className="h-5 w-5 text-coral-brand" aria-hidden />
+                  <span className="text-2xl leading-none" aria-hidden>
+                    {PARTY_EMOJI[v]}
+                  </span>
                   <span className="font-semibold text-navy">{l}</span>
                 </button>
               ))}
@@ -525,7 +533,9 @@ export function Wizard({
             <div className="grid gap-3 sm:grid-cols-2">
               {BUDGET_TIER_DEFS.map((t) => (
                 <button key={t.id} type="button" aria-pressed={a.budget.tier === t.id} onClick={() => set("budget", { ...a.budget, tier: t.id })} className={cx("flex items-start gap-3 rounded-2xl border bg-white p-4 text-left", a.budget.tier === t.id ? "border-2 border-orange-brand shadow-soft" : "border-line")}>
-                  <Wallet className="mt-0.5 h-5 w-5 text-orange-brand" aria-hidden />
+                  <span className="text-2xl leading-none" aria-hidden>
+                    {t.emoji}
+                  </span>
                   <span>
                     <span className="block font-semibold text-navy">{t.label}</span>
                     <span className="text-sm text-muted">{t.hint}</span>
@@ -604,7 +614,7 @@ export function Wizard({
                     }}
                     className={cx("rounded-full border px-3.5 py-2 text-sm font-semibold", on ? "border-purple-brand bg-purple-brand text-white" : "border-line bg-white text-navy")}
                   >
-                    {p.label}
+                    <span aria-hidden>{p.emoji}</span> {p.label}
                   </button>
                 );
               })}
@@ -626,7 +636,9 @@ export function Wizard({
                     return (
                       <li key={id} className="flex items-center gap-2 rounded-xl border border-line bg-white px-3 py-2">
                         <span className="w-6 font-display text-lg text-purple-brand">{i + 1}</span>
-                        <span className="flex-1 text-sm font-semibold text-navy">{def.label}</span>
+                        <span className="flex-1 text-sm font-semibold text-navy">
+                          <span aria-hidden>{def.emoji}</span> {def.label}
+                        </span>
                         <button
                           type="button"
                           aria-pressed={must}
@@ -673,7 +685,7 @@ export function Wizard({
                   const on = a.stay.lodgingTypes.includes(k);
                   return (
                     <button key={k} type="button" aria-pressed={on} onClick={() => set("stay", { ...a.stay, lodgingTypes: toggle(a.stay.lodgingTypes, k) })} className={cx("rounded-full border px-3.5 py-2 text-sm font-semibold", on ? "border-cyan-brand bg-cyan-brand text-white" : "border-line bg-white text-navy")}>
-                      {LODGING_LABELS[k]}
+                      <span aria-hidden>{LODGING_EMOJI[k]}</span> {LODGING_LABELS[k]}
                     </button>
                   );
                 })}
@@ -685,7 +697,7 @@ export function Wizard({
                   const on = a.stay.transport.includes(k);
                   return (
                     <button key={k} type="button" aria-pressed={on} onClick={() => set("stay", { ...a.stay, transport: toggle(a.stay.transport, k) })} className={cx("rounded-full border px-3.5 py-2 text-sm font-semibold", on ? "border-cyan-brand bg-cyan-brand text-white" : "border-line bg-white text-navy")}>
-                      {TRANSPORT_LABELS[k]}
+                      <span aria-hidden>{TRANSPORT_EMOJI[k]}</span> {TRANSPORT_LABELS[k]}
                     </button>
                   );
                 })}
@@ -746,7 +758,7 @@ export function Wizard({
         )}
       </div>
 
-      <div className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-white/95 backdrop-blur">
+      <div className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-white/95 pb-[env(safe-area-inset-bottom)] backdrop-blur">
         <div className="mx-auto flex max-w-3xl items-center justify-between gap-3 px-4 py-3 sm:px-6">
           <Button variant="ghost" onClick={() => setStep((s) => Math.max(0, s - 1))} disabled={step === 0}>
             <ArrowLeft className="h-4 w-4" aria-hidden /> Atrás

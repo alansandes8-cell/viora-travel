@@ -1,6 +1,7 @@
 import { BUDGET_TIER_DEFS, INTEREST_LABELS, LODGING_LABELS, MONTHS_ES, ORIGIN_CITIES, PRIORITY_BY_ID, TRIP_STYLE_BY_ID } from "./catalog";
 import { SUPER_REGION } from "./library";
-import { extractInterests, extractNights, matchCountries, matchDestinations, matchRegions, normalize } from "./text";
+import { applyThisOrThat } from "./game";
+import { classifyMentions, extractInterests, extractNights, matchCountries, matchCountryCodes, matchDestinations, matchRegions, normalize } from "./text";
 import type { Destination, InferredItem, Interest, IntakeAnswers, MissingItem, Pace, TravelerProfile } from "./types";
 
 export function nightsBetween(a: string, b: string): number {
@@ -66,6 +67,7 @@ export function buildProfile(answers: IntakeAnswers, library: Destination[]): Tr
   if (extra.romantic_setting === "cities") bump("culture", 0.8);
   if (extra.beach_vibe === "activities") bump("adventure", 0.6);
   if (extra.beach_vibe === "quiet") bump("relax", 1);
+  const gamePace = applyThisOrThat(extra, bump);
 
   // ── Ritmo ──
   const pr = new Set(answers.priorities.selected);
@@ -78,6 +80,8 @@ export function buildProfile(answers: IntakeAnswers, library: Destination[]): Tr
   if (answers.tripStyles.includes("backpacker")) paceScore += 1;
   if (extra.depth === "many") paceScore += 1.5;
   if (extra.depth === "few") paceScore -= 1.5;
+  if (gamePace === "relaxed") paceScore -= 1.5;
+  if (gamePace === "intense") paceScore += 1.5;
   if (answers.party.childrenAges.some((a) => a < 6)) paceScore -= 1;
   if (answers.party.mobility && answers.party.mobility !== "none") paceScore -= 1.5;
   const pace: Pace = paceScore <= -1.5 ? "relaxed" : paceScore >= 1.5 ? "intense" : "balanced";
@@ -142,10 +146,15 @@ export function buildProfile(answers: IntakeAnswers, library: Destination[]): Tr
   declared.push({ label: "Nivel de presupuesto", value: tierDef?.label ?? answers.budget.tier });
 
   // ── Historial ──
-  const visitedIds = new Set<string>();
-  for (const v of answers.history.visited) matchDestinations(v, library).forEach((id) => visitedIds.add(id));
+  const mentions = classifyMentions(dream, library);
+  const visitedIds = new Set<string>(mentions.known);
+  const visitedCountries = new Set<string>(mentions.knownCountries);
+  for (const v of answers.history.visited) {
+    matchDestinations(v, library).forEach((id) => visitedIds.add(id));
+    matchCountryCodes(v, library).forEach((cc) => visitedCountries.add(cc));
+  }
   const lovedIds = answers.history.loved.flatMap((v) => matchDestinations(v, library));
-  const excluded = new Set<string>();
+  const excluded = new Set<string>(mentions.avoid);
   for (const v of [...answers.history.wouldNotReturn, ...answers.history.avoid]) {
     matchDestinations(v, library).forEach((id) => excluded.add(id));
     matchCountries(v, library).forEach((id) => excluded.add(id));
@@ -155,7 +164,17 @@ export function buildProfile(answers: IntakeAnswers, library: Destination[]): Tr
   if (excluded.size) declared.push({ label: "No quiere visitar", value: [...answers.history.wouldNotReturn, ...answers.history.avoid].join(", ") });
 
   // ── Deseos explícitos ──
-  const wishIds = new Set<string>([...matchDestinations(dream, library), ...pendingIds]);
+  const wishIds = new Set<string>([...mentions.wish, ...pendingIds]);
+  if (visitedIds.size || visitedCountries.size) {
+    inferred.push({
+      key: "known",
+      label: "Lugares que ya conoce",
+      value: [...[...visitedIds].map((id) => library.find((d) => d.id === id)?.name ?? id), ...[...visitedCountries].map((cc) => library.find((d) => d.countryCode === cc)?.country ?? cc)].join(", "),
+      rationale: "Se excluyen de las alternativas salvo que el cliente quiera repetirlos o no haya suficientes opciones nuevas.",
+      confidence: "high",
+      by: "rules",
+    });
+  }
   const wishRegions = new Set<string>(matchRegions(dream));
   for (const r of asList(extra.continents)) wishRegions.add(r);
   if (answers.tripStyles.includes("eurotrip")) wishRegions.add("europa");
@@ -172,7 +191,9 @@ export function buildProfile(answers: IntakeAnswers, library: Destination[]): Tr
     });
   }
 
-  const visitedEurope = [...visitedIds].some((id) => EUROPE_CLUSTERS.has(library.find((d) => d.id === id)?.cluster ?? ""));
+  const visitedEurope =
+    [...visitedIds].some((id) => EUROPE_CLUSTERS.has(library.find((d) => d.id === id)?.cluster ?? "")) ||
+    [...visitedCountries].some((cc) => library.some((d) => d.countryCode === cc && EUROPE_CLUSTERS.has(d.cluster)));
   const wantsEurope = wishRegions.has("europa") || [...wishIds].some((id) => SUPER_REGION[library.find((d) => d.id === id)?.cluster ?? ""] === "europa");
   const firstTimeEurope = wantsEurope && !visitedEurope;
   if (wantsEurope) {
@@ -223,6 +244,7 @@ export function buildProfile(answers: IntakeAnswers, library: Destination[]): Tr
     reducedMobility,
     budgetTier: answers.budget.tier,
     visitedIds: [...visitedIds],
+    visitedCountries: [...visitedCountries],
     excludedIds: [...excluded],
     lovedIds,
     pendingIds,

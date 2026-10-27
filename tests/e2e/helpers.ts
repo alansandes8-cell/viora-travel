@@ -6,6 +6,10 @@ export async function completeBeachIntake(page: Page) {
   await page.getByRole("button", { name: /Relax y playa/ }).click();
   await page.locator("#dream").fill("Quiero 14 días descansando en una playa con agua turquesa y buena gastronomía");
   await page.getByRole("button", { name: "Siguiente" }).click();
+  // «¿Esto o aquello?»
+  await page.getByRole("button", { name: "Playa", exact: true }).click();
+  await page.getByRole("button", { name: "Ritmo lento", exact: true }).click();
+  await page.getByRole("button", { name: "Siguiente" }).click();
   await page.getByRole("button", { name: "febrero" }).click();
   await page.locator("#nights").fill("14");
   for (let i = 0; i < 3; i++) await page.getByRole("button", { name: "Siguiente" }).click();

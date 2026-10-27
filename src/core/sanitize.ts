@@ -1,6 +1,8 @@
 import { MONTHS_ES } from "./catalog";
+import { travelerPersona } from "./game";
 import { modeLabel } from "./itinerary";
-import type { Criterion, PlanDocument, VerificationStatus } from "./types";
+import { SEED_DESTINATIONS } from "./library";
+import type { Criterion, DestinationKind, PlanDocument, VerificationStatus } from "./types";
 import { CRITERIA, CRITERIA_LABELS, VERIFICATION_LABELS } from "./types";
 
 /**
@@ -15,10 +17,11 @@ export interface ClientProposal {
   preferences: { label: string; value: string }[];
   exploratory: boolean;
   travelMonths: number[];
+  persona: { emoji: string; name: string; tagline: string; traits: { label: string; value: number }[] };
   alternatives: {
     id: string;
     title: string;
-    stops: { name: string; country: string; nights: number }[];
+    stops: { name: string; country: string; nights: number; kind: DestinationKind }[];
     summary: string;
     mainReason: string;
     idealTraveler: string;
@@ -41,7 +44,7 @@ export interface ClientProposal {
   selectedAlternativeId: string | null;
   itinerary: {
     startDate?: string;
-    stops: { id: string; name: string; country: string; nights: number; lat: number | null; lng: number | null; lodgingZone?: string; arrivalDate?: string; departureDate?: string }[];
+    stops: { id: string; name: string; country: string; nights: number; kind: DestinationKind; lat: number | null; lng: number | null; lodgingZone?: string; arrivalDate?: string; departureDate?: string }[];
     legs: { from: string; to: string; mode: string; hours: number | null; status: string; operators: { name: string; url: string }[] }[];
     days: {
       n: number;
@@ -91,6 +94,17 @@ function statusLabel(s: VerificationStatus): string {
   return s === "pending" ? "Pendiente de validación" : VERIFICATION_LABELS[s];
 }
 
+const KIND_BY_ID = new Map(SEED_DESTINATIONS.map((d) => [d.id, d.kind]));
+/** Tipo de paisaje (para la ilustración de respaldo). Paradas cargadas a mano: «city». */
+function kindOf(id: string | null): DestinationKind {
+  return (id && KIND_BY_ID.get(id)) || "city";
+}
+
+/** Parada principal de una alternativa (la de más noches): define su imagen de portada. */
+export function mainStop<T extends { nights: number }>(a: { stops: T[] }): T | undefined {
+  return a.stops.reduce<T | undefined>((best, s) => (!best || s.nights > best.nights ? s : best), undefined);
+}
+
 export function toClientProposal(doc: PlanDocument, status: ClientProposal["status"]): ClientProposal {
   const it = doc.itinerary;
   const seasonalByAlt = new Map(doc.seasonal.map((s) => [s.alternativeId, s.windows]));
@@ -102,10 +116,11 @@ export function toClientProposal(doc: PlanDocument, status: ClientProposal["stat
     preferences: doc.profile.declared.map((d) => ({ label: d.label, value: scrub(d.value) })).filter((d) => d.value),
     exploratory: doc.profile.exploratory,
     travelMonths: doc.profile.months,
+    persona: travelerPersona(doc.profile),
     alternatives: doc.alternatives.map((a) => ({
       id: a.id,
       title: scrub(a.title),
-      stops: a.stops.map((s) => ({ name: s.name, country: s.country, nights: s.nights })),
+      stops: a.stops.map((s) => ({ name: s.name, country: s.country, nights: s.nights, kind: kindOf(s.destinationId) })),
       summary: scrub(a.summary),
       mainReason: scrub(a.mainReason),
       idealTraveler: scrub(a.idealTraveler),
@@ -139,6 +154,7 @@ export function toClientProposal(doc: PlanDocument, status: ClientProposal["stat
             name: s.name,
             country: s.country,
             nights: s.nights,
+            kind: kindOf(s.destinationId),
             lat: s.lat,
             lng: s.lng,
             lodgingZone: scrub(s.lodgingZone),
