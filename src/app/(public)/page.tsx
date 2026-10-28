@@ -19,7 +19,7 @@ const SERVICES = [
 
 export default async function HomePage() {
   const styles = TRIP_STYLE_DEFS.filter((s) => (FEATURED as readonly string[]).includes(s.id));
-  const [hero, ...tiles] = await Promise.all([imagesFor("tropical beach turquoise water aerial", 1), ...styles.map((s) => imagesFor(s.imageQuery, 1))]);
+  const [hero, ...tiles] = await Promise.all([imagesFor("Baía do Sancho", 1), ...styles.map((s) => imagesFor(s.imageQuery, 1))]);
 
   return (
     <>
@@ -50,7 +50,7 @@ export default async function HomePage() {
           <div className="relative">
             <SmartImage
               image={hero[0]}
-              alt="Playa de agua turquesa"
+              alt="Playa de agua turquesa (Baía do Sancho, Fernando de Noronha)"
               eager
               className="aspect-[4/5] w-full rounded-[2rem] shadow-lift sm:aspect-[5/4] lg:aspect-[4/5]"
               fallback={

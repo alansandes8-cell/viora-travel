@@ -86,6 +86,27 @@ export function bestMonths(dest: Destination, profile: TravelerProfile, count = 
     .map((x) => x.m);
 }
 
+const SARGASSUM_PEAK = [5, 6, 7, 8];
+const BEACHY = new Set(["beach", "resort", "island"]);
+
+/**
+ * Riesgo de temporada que desaconseja el destino para ese mes y ese perfil (no solo lo penaliza):
+ * sargazo en su pico o monzón para quien busca playa, huracanes en la temporada más activa en
+ * destinos de playa, y calor extremo para chicos chicos o personas con movilidad reducida.
+ */
+export function severeSeasonRisk(dest: Destination, month: number, profile: TravelerProfile): string | null {
+  const wantsBeach = (profile.interests.beach ?? 0) >= 0.5;
+  const beachy = BEACHY.has(dest.kind);
+  for (const r of dest.risks ?? []) {
+    if (!r.months.includes(month) || r.level === "low") continue;
+    if (r.kind === "sargassum" && wantsBeach && SARGASSUM_PEAK.includes(month)) return r.note;
+    if (r.kind === "monsoon" && wantsBeach && beachy) return r.note;
+    if (r.kind === "hurricane" && beachy && [8, 9, 10].includes(month)) return r.note;
+    if (r.kind === "heat" && (dest.climate.hi[month - 1] ?? 0) >= 38 && (profile.kids.some((k) => k < 6) || profile.reducedMobility)) return r.note;
+  }
+  return null;
+}
+
 export function riskPenalty(dest: Destination, month: number, profile: TravelerProfile): { penalty: number; notes: string[] } {
   let p = 0;
   const notes: string[] = [];
@@ -94,7 +115,7 @@ export function riskPenalty(dest: Destination, month: number, profile: TravelerP
     let v = 0;
     switch (r.kind) {
       case "hurricane":
-        v = [8, 9, 10].includes(month) ? 3 : 1.5;
+        v = r.level === "low" ? 0.5 : [8, 9, 10].includes(month) ? 3 : 1.5;
         break;
       case "monsoon":
         v = 2;
@@ -109,7 +130,7 @@ export function riskPenalty(dest: Destination, month: number, profile: TravelerP
         v = 2.5;
         break;
       case "sargassum":
-        v = (profile.interests.beach ?? 0) >= 0.5 ? 1 : 0;
+        v = (profile.interests.beach ?? 0) >= 0.5 ? (SARGASSUM_PEAK.includes(month) ? 4 : 2) : 0.3;
         break;
       case "crowds":
         v = profile.mustHave.includes("avoid_crowds") ? 2 : 0.7;

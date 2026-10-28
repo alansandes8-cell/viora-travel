@@ -21,7 +21,7 @@ export default async function PanelLayout({ children }: { children: React.ReactN
       <aside className="border-b border-line bg-white lg:sticky lg:top-0 lg:h-screen lg:border-b-0 lg:border-r no-print">
         <div className="flex items-center justify-between px-4 py-3 lg:block lg:py-5">
           <Link href="/admin" className="flex items-center gap-2">
-            <Logo size={64} className="w-16" />
+            <Logo size={120} className="w-[120px]" />
             <span className="text-xs font-bold uppercase tracking-wider text-muted">Panel</span>
           </Link>
           <form action={logoutAction} className="lg:hidden">

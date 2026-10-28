@@ -79,7 +79,7 @@ function App() {
       <header className="top">
         <div className="wrap top-in">
           <button className="logo-btn" onClick={() => setView("home")} aria-label="Inicio">
-            <img src={LOGO_SRC} alt="VIORA TRAVEL" width={64} height={64} />
+            <img src={LOGO_SRC} alt="VIORA TRAVEL" width={130} height={51} />
           </button>
           <nav className="top-nav">
             {doc && (

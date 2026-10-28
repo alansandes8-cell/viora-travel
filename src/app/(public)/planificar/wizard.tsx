@@ -7,6 +7,7 @@ import {
   ArrowLeft,
   ArrowRight,
   ArrowUp,
+  RotateCcw,
   Check,
   Loader2,
   Plus,
@@ -29,7 +30,7 @@ import { THIS_OR_THAT } from "@/core/game";
 import type { SmartQuestion } from "@/core/questions";
 import type { IntakeAnswers, LodgingType, PartyType, Priority, TransportMode, TripStyle } from "@/core/types";
 import { ACCENTS, Button, Field, Notice, cx, inputClass } from "@/components/ui";
-import { saveDraftAction, smartQuestionsAction, submitAction } from "./actions";
+import { newTripDraftAction, saveDraftAction, smartQuestionsAction, submitAction } from "./actions";
 
 const STEPS = [
   { key: "style", emoji: "✈️", title: "¿Qué tipo de viaje soñás?", subtitle: "Elegí uno o varios estilos, o contalo con tus palabras." },
@@ -73,6 +74,44 @@ function merge(initial: Partial<IntakeAnswers> | null): IntakeAnswers {
   };
 }
 
+type StepKey = (typeof STEPS)[number]["key"];
+
+/** Paso del cuestionario al que pertenece un campo (p. ej. «dates.return» → «dates»). */
+function stepOfField(path: string): StepKey {
+  const [head, sub] = path.split(".");
+  if (head === "tripStyles" || head === "dreamText" || head === "style") return "style";
+  if (head === "nights") return "dates";
+  if (head === "extra") return sub?.startsWith("tot_") ? "game" : "smart";
+  return (STEPS.find((s) => s.key === head)?.key ?? "smart") as StepKey;
+}
+
+/** Clave de error que muestra cada campo del formulario. */
+function displayKey(path: string): string {
+  if (path === "dates.nights") return "nights";
+  return stepOfField(path);
+}
+
+/** Los mensajes técnicos de la validación del servidor se reemplazan por uno claro. */
+function friendly(message: string, step: StepKey): string {
+  if (!/\b(expected|invalid|must|too (big|small|long|short)|required)\b/i.test(message)) return message;
+  return `Hay un dato para corregir en «${STEPS.find((s) => s.key === step)?.title ?? "este paso"}».`;
+}
+
+const FLEX_HELP: Record<number, string> = {
+  0: "Viajás exactamente en esas fechas.",
+  3: "Podés salir y volver hasta 3 días antes o después de lo que indicaste.",
+  7: "Podés mover la salida y la vuelta hasta una semana para un lado o para el otro.",
+  30: "Te sirve cualquier semana dentro del mes anterior o posterior.",
+  120: "Te adaptás a la mejor época: te sugerimos cuándo conviene ir.",
+};
+
+/** «2026-03-10» ± días → «7/3». */
+function shiftDate(iso: string, days: number): string {
+  const d = new Date(`${iso}T12:00:00`);
+  d.setDate(d.getDate() + days);
+  return `${d.getDate()}/${d.getMonth() + 1}`;
+}
+
 function toggle<T>(list: T[], v: T): T[] {
   return list.includes(v) ? list.filter((x) => x !== v) : [...list, v];
 }
@@ -106,6 +145,8 @@ export function Wizard({
   const [submitting, startSubmit] = useTransition();
   const [loadingMsg, setLoadingMsg] = useState(0);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [proposalExists, setProposalExists] = useState(hasProposal);
+  const [resetting, startReset] = useTransition();
   const firstRender = useRef(true);
   const headingRef = useRef<HTMLHeadingElement>(null);
 
@@ -185,10 +226,36 @@ export function Wizard({
     setStep((s) => Math.min(s + 1, STEPS.length - 1));
   }
 
-  function submit() {
-    const e = validate(step);
+  /** Lleva al primer paso con errores (los marca en el pasaporte y arriba del paso). */
+  function showErrors(e: Record<string, string>) {
     setErrors(e);
-    if (Object.keys(e).length) return;
+    const steps = Object.keys(e).map(stepOfField);
+    const first = STEPS.findIndex((s) => steps.includes(s.key));
+    if (first >= 0 && first !== step) setStep(first);
+  }
+
+  function startOver() {
+    const started = proposalExists || a.tripStyles.length > 0 || (a.dreamText ?? "").trim().length > 0 || step > 0;
+    if (started && !window.confirm("¿Empezar un viaje nuevo desde cero?\n\nTu viaje actual queda guardado en «Mis viajes».")) return;
+    startReset(async () => {
+      await newTripDraftAction();
+      firstRender.current = true; // no guardar el formulario vacío como un viaje nuevo
+      setA(DEFAULTS);
+      setBudgetAmount({ amount: "", currency: "USD", per: "person" });
+      setErrors({});
+      setSubmitError(null);
+      setQuestions(null);
+      setProposalExists(false);
+      setSaved("idle");
+      setStep(0);
+    });
+  }
+
+  function submit() {
+    // Antes de enviar se revisan TODOS los pasos, no solo el último.
+    const e = STEPS.reduce<Record<string, string>>((acc, _, i) => ({ ...acc, ...validate(i) }), {});
+    if (Object.keys(e).length) return showErrors(e);
+    setErrors({});
     setSubmitError(null);
     const amount = Number(budgetAmount.amount.replace(/\./g, "").replace(",", "."));
     const budget = amount > 0 ? { amount, currency: budgetAmount.currency, per: budgetAmount.per } : undefined;
@@ -202,12 +269,18 @@ export function Wizard({
       if (r.ok) router.push("/viaje");
       else {
         setSubmitError(r.error);
-        if (r.fields) setErrors(r.fields);
+        if (r.fields) {
+          const mapped: Record<string, string> = {};
+          for (const [path, msg] of Object.entries(r.fields)) mapped[displayKey(path)] ??= friendly(msg, stepOfField(path));
+          showErrors(mapped);
+        }
       }
     });
   }
 
   const S = STEPS[step];
+  const errorSteps = new Set(Object.keys(errors).map(stepOfField));
+  const stepErrors = Object.entries(errors).filter(([k]) => stepOfField(k) === S.key);
 
   if (submitting) {
     return (
@@ -221,20 +294,30 @@ export function Wizard({
 
   return (
     <div className="mx-auto w-full max-w-3xl px-4 pb-32 pt-6 sm:px-6">
-      {hasProposal && (
+      {proposalExists && (
         <Notice className="mb-4">
           Ya tenés una propuesta generada. Si cambiás tus respuestas, vamos a recalcularla y guardar una nueva versión.{" "}
           <a href="/viaje" className="font-semibold underline">
             Ver mi propuesta
-          </a>
+          </a>{" "}
+          o{" "}
+          <button type="button" onClick={startOver} className="font-semibold underline">
+            empezá un viaje nuevo
+          </button>
+          .
         </Notice>
       )}
       <div className="mb-6">
-        <div className="flex items-center justify-between text-xs font-semibold text-muted">
+        <div className="flex items-center justify-between gap-3 text-xs font-semibold text-muted">
           <span>
             Paso {step + 1} de {STEPS.length}
+            <span aria-live="polite" className="ml-2 font-normal">
+              {saved === "saving" ? "· Guardando…" : saved === "saved" ? "· Guardado" : saved === "error" ? "· No se pudo guardar" : ""}
+            </span>
           </span>
-          <span aria-live="polite">{saved === "saving" ? "Guardando…" : saved === "saved" ? "Guardado" : saved === "error" ? "No se pudo guardar" : ""}</span>
+          <button type="button" onClick={startOver} disabled={resetting} className="inline-flex items-center gap-1 rounded-full border border-line bg-white px-3 py-1.5 text-xs font-semibold text-navy hover:bg-sand-2 disabled:opacity-50">
+            <RotateCcw className="h-3.5 w-3.5" aria-hidden /> {resetting ? "Limpiando…" : "Empezar de cero"}
+          </button>
         </div>
         <ol className="mt-3 flex flex-wrap gap-1.5" aria-hidden>
           {STEPS.map((x, i) => (
@@ -243,10 +326,16 @@ export function Wizard({
               title={x.title}
               className={cx(
                 "flex h-7 w-7 items-center justify-center rounded-full border-2 text-xs font-bold sm:h-8 sm:w-8",
-                i < step ? "stamp -rotate-6 border-teal-brand bg-teal-brand/10 text-base" : i === step ? "border-teal-brand bg-white text-teal-brand" : "border-dashed border-line bg-white text-muted",
+                errorSteps.has(x.key)
+                  ? "border-danger bg-danger/10 text-danger"
+                  : i < step
+                    ? "stamp -rotate-6 border-teal-brand bg-teal-brand/10 text-base"
+                    : i === step
+                      ? "border-teal-brand bg-white text-teal-brand"
+                      : "border-dashed border-line bg-white text-muted",
               )}
             >
-              {i < step ? x.emoji : i + 1}
+              {errorSteps.has(x.key) ? "!" : i < step ? x.emoji : i + 1}
             </li>
           ))}
         </ol>
@@ -256,6 +345,11 @@ export function Wizard({
         {S.title}
       </h1>
       <p className="mt-2 text-muted">{S.subtitle}</p>
+      {stepErrors.length > 0 && (
+        <Notice tone="danger" className="mt-4">
+          <b>Revisá este paso:</b> {stepErrors.map(([, m]) => m).join(" ")}
+        </Notice>
+      )}
 
       <div className="mt-8 fade-in" key={S.key}>
         {S.key === "style" && (
@@ -368,7 +462,10 @@ export function Wizard({
                 <input id="nights" type="number" min={1} max={90} inputMode="numeric" className={cx(inputClass, "max-w-40")} value={a.dates.nights ?? ""} onChange={(e) => set("dates", { ...a.dates, nights: e.target.value ? Number(e.target.value) : undefined })} />
               </Field>
             )}
-            <Field label="Flexibilidad de fechas">
+            <Field
+              label="Flexibilidad de fechas"
+              hint="¿Cuánto podrías mover el viaje? Indica cuántos días antes o después de lo elegido podrías salir y volver. Con más flexibilidad suele ser más fácil conseguir mejores vuelos, precios y clima."
+            >
               <div className="flex flex-wrap gap-2">
                 {[
                   [0, "Fechas fijas"],
@@ -382,6 +479,14 @@ export function Wizard({
                   </button>
                 ))}
               </div>
+              {a.dates.flexibilityDays !== undefined && FLEX_HELP[a.dates.flexibilityDays] && (
+                <p className="mt-2 rounded-xl bg-sand-2 px-3 py-2 text-sm text-navy">
+                  💡 {FLEX_HELP[a.dates.flexibilityDays]}
+                  {a.dates.mode === "exact" && a.dates.departure && a.dates.flexibilityDays > 0 && a.dates.flexibilityDays <= 30 && (
+                    <> Por ejemplo: salida entre el {shiftDate(a.dates.departure, -a.dates.flexibilityDays)} y el {shiftDate(a.dates.departure, a.dates.flexibilityDays)}.</>
+                  )}
+                </p>
+              )}
             </Field>
             <div className="flex flex-wrap gap-4 text-sm">
               <label className="flex items-center gap-2">
@@ -763,7 +868,7 @@ export function Wizard({
           <Button variant="ghost" onClick={() => setStep((s) => Math.max(0, s - 1))} disabled={step === 0}>
             <ArrowLeft className="h-4 w-4" aria-hidden /> Atrás
           </Button>
-          {Object.keys(errors).length > 0 && <p className="hidden text-sm font-semibold text-danger sm:block">Revisá lo marcado</p>}
+          {Object.keys(errors).length > 0 && <p className="hidden text-sm font-semibold text-danger sm:block">Revisá lo marcado en rojo</p>}
           {step < STEPS.length - 1 ? (
             <Button onClick={next}>
               Siguiente <ArrowRight className="h-4 w-4" aria-hidden />

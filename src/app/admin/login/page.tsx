@@ -13,7 +13,7 @@ export default async function LoginPage() {
     <div className="flex min-h-screen items-center justify-center bg-sand px-4">
       <Card className="w-full max-w-sm p-8">
         <div className="flex justify-center">
-          <Logo size={140} />
+          <Logo size={220} />
         </div>
         <h1 className="mt-4 text-center text-xl font-semibold">Panel de la agencia</h1>
         <LoginForm />

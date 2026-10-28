@@ -2,6 +2,7 @@
 import "server-only";
 import { and, eq, inArray, sql } from "drizzle-orm";
 import { db, schema } from "../db";
+import { wikipediaImages } from "./wikipedia";
 
 /**
  * Imágenes y videos con fuente, autor y licencia. Cada proveedor es un adaptador;
@@ -113,50 +114,17 @@ const pexels: Provider = {
   },
 };
 
-function stripHtml(s?: string): string | null {
-  if (!s) return null;
-  return s.replace(/<[^>]*>/g, "").replace(/\s+/g, " ").trim().slice(0, 200) || null;
-}
-
-/** Wikimedia Commons: no requiere clave. Solo se aceptan licencias libres explícitas (CC0, CC BY, CC BY-SA, dominio público). */
-const wikimedia: Provider = {
-  name: "wikimedia",
+/**
+ * Wikipedia: imagen principal del artículo del lugar (no requiere clave). Va primero porque
+ * muestra exactamente el lugar buscado; Unsplash y Pexels quedan como alternativa.
+ */
+const wikipedia: Provider = {
+  name: "wikipedia",
   kind: "image",
   configured: () => process.env.WIKIMEDIA_DISABLED !== "1",
   async search(query, count) {
-    const url =
-      `https://commons.wikimedia.org/w/api.php?action=query&format=json&generator=search&gsrnamespace=6&gsrlimit=${count * 2}` +
-      `&gsrsearch=${encodeURIComponent(`${query} filetype:bitmap`)}&prop=imageinfo&iiprop=url|size|extmetadata&iiurlwidth=1600&origin=*`;
-    const data = await getJson(url);
-    const pages = Object.values(data.query?.pages ?? {}) as Record<string, any>[];
-    const items: Omit<MediaItem, "id">[] = [];
-    const ids: string[] = [];
-    for (const p of pages) {
-      const info = p.imageinfo?.[0];
-      const meta = info?.extmetadata ?? {};
-      const license = meta.LicenseShortName?.value as string | undefined;
-      if (!info || !license || !/^(cc0|cc by|cc-by|public domain|dominio p)/i.test(license)) continue;
-      if ((info.width ?? 0) < 1000 || (info.width ?? 0) < (info.height ?? 0)) continue;
-      ids.push(String(p.pageid));
-      const author = stripHtml(meta.Artist?.value);
-      items.push({
-        provider: "wikimedia",
-        kind: "image",
-        url: info.thumburl ?? info.url,
-        thumbUrl: info.thumburl ?? null,
-        width: info.thumbwidth ?? info.width ?? null,
-        height: info.thumbheight ?? info.height ?? null,
-        title: stripHtml(meta.ObjectName?.value) ?? p.title,
-        author,
-        authorUrl: null,
-        sourceUrl: info.descriptionurl ?? null,
-        license,
-        attribution: `${author ?? "Autor desconocido"} — ${license}, vía Wikimedia Commons`,
-        aiGenerated: false,
-      });
-      if (items.length >= count) break;
-    }
-    return { status: items.length ? "ok" : "empty", items, externalIds: ids };
+    const { items, externalIds } = await wikipediaImages(query, count, (url) => getJson(url));
+    return { status: items.length ? "ok" : "empty", items, externalIds };
   },
 };
 
@@ -191,7 +159,7 @@ const youtube: Provider = {
   },
 };
 
-export const IMAGE_PROVIDERS = [unsplash, pexels, wikimedia];
+export const IMAGE_PROVIDERS = [wikipedia, unsplash, pexels];
 export const VIDEO_PROVIDERS = [youtube];
 
 export function mediaStatus() {

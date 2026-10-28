@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { applyChanges, parseChangeRequest } from "@/core/changes";
 import { haversineKm } from "@/core/geo";
 import { SUPER_REGION } from "@/core/library";
-import { generatePlan } from "@/core/plan";
+import { generatePlan, selectAlternative } from "@/core/plan";
 import { computeQuote } from "@/core/pricing";
 import { pickSmartQuestions } from "@/core/questions";
 import { scanForMoney, toClientProposal } from "@/core/sanitize";
@@ -331,5 +331,74 @@ describe("Destinos ya conocidos (ajuste pedido por la agencia)", () => {
   it("«no quiero ir a X» excluye X", () => {
     const doc = generatePlan(answers({ tripStyles: ["eurotrip"], dreamText: "Quiero Europa pero no quiero ir a Londres", dates: { mode: "month", months: [5], nights: 15 } }), ctx);
     expect(all(doc)).not.toContain("londres");
+  });
+});
+
+describe("Reglas de itinerario y temporada (ajuste pedido por la agencia)", () => {
+  const parkStreaks = (doc: PlanDocument) => {
+    let streak = 0;
+    let max = 0;
+    for (const d of doc.itinerary!.days) {
+      streak = d.activities.some((a) => a.themePark) ? streak + 1 : 0;
+      max = Math.max(max, streak);
+    }
+    return max;
+  };
+  const withOrlando = (over: Parameters<typeof answers>[0]) => {
+    const doc = generatePlan(answers(over), ctx);
+    const alt = doc.alternatives.find((x) => x.stops.some((s) => s.destinationId === "orlando"));
+    expect(alt).toBeTruthy();
+    return selectAlternative(structuredClone(doc), alt!.id, answers(over), ctx);
+  };
+
+  it("Disney: nunca más de 2 días de parque seguidos y hay días de descanso entre parques", () => {
+    const doc = withOrlando({ tripStyles: ["theme_parks"], dreamText: "Quiero ir a Disney", party: { type: "couple", adults: 2, childrenAges: [] }, dates: { mode: "month", months: [3], nights: 10 } });
+    const parkDays = doc.itinerary!.days.filter((d) => d.activities.some((a) => a.themePark)).length;
+    expect(parkDays).toBeGreaterThanOrEqual(3);
+    expect(parkStreaks(doc)).toBeLessThanOrEqual(2);
+    expect(doc.itinerary!.days.some((d) => d.title === "Descanso entre parques")).toBe(true);
+    expect(doc.checks.map((c) => c.code)).not.toContain("park_streak");
+  });
+  it("Disney con chicos menores de 6: se alterna parque y descanso", () => {
+    const doc = withOrlando({ tripStyles: ["family", "theme_parks"], dreamText: "Disney con los chicos", party: { type: "family", adults: 2, childrenAges: [4] }, dates: { mode: "month", months: [3], nights: 9 } });
+    expect(parkStreaks(doc)).toBeLessThanOrEqual(1);
+  });
+  it("playa en julio: no recomienda Punta Cana ni Riviera Maya (pico de sargazo)", () => {
+    const doc = generatePlan(answers({ tripStyles: ["beach_relax"], dates: { mode: "month", months: [7], nights: 10 } }), ctx);
+    const ids = doc.alternatives.flatMap((a) => a.stops.map((s) => s.destinationId));
+    expect(ids).not.toContain("punta-cana");
+    expect(ids).not.toContain("riviera-maya");
+    expect(doc.alternatives.length).toBe(3);
+  });
+  it("playa en septiembre: evita el Caribe con huracanes frecuentes, pero no Aruba (riesgo bajo)", () => {
+    const doc = generatePlan(answers({ tripStyles: ["beach_relax"], dates: { mode: "month", months: [9], nights: 10 } }), ctx);
+    const ids = doc.alternatives.flatMap((a) => a.stops.map((s) => s.destinationId));
+    expect(ids).not.toContain("punta-cana");
+    expect(ids).not.toContain("riviera-maya");
+  });
+  it("si el cliente pide Punta Cana en julio, se respeta pero se advierte el sargazo", () => {
+    const a = answers({ tripStyles: ["beach_relax"], dreamText: "Quiero ir a Punta Cana", dates: { mode: "month", months: [7], nights: 8 } });
+    const doc = generatePlan(a, ctx);
+    const alt = doc.alternatives.find((x) => x.stops.some((s) => s.destinationId === "punta-cana"))!;
+    expect(alt).toBeTruthy();
+    expect(alt.warnings.join(" ")).toMatch(/sargazo/i);
+    const chosen = selectAlternative(structuredClone(doc), alt.id, a, ctx);
+    expect(chosen.checks.map((c) => c.code)).toContain("season_not_advised");
+  });
+  it("en febrero el Caribe sigue disponible para playa", () => {
+    const doc = generatePlan(answers({ tripStyles: ["beach_relax"], dreamText: "Caribe", dates: { mode: "month", months: [2], nights: 10 } }), ctx);
+    const ids = doc.alternatives.flatMap((a) => a.stops.map((s) => s.destinationId));
+    expect(ids.some((id) => ["punta-cana", "riviera-maya", "aruba", "curacao", "san-andres"].includes(id))).toBe(true);
+  });
+  it("Cusco: la llegada y el primer día completo son suaves (aclimatación a la altura)", () => {
+    const a = answers({ tripStyles: ["culture_history"], dreamText: "Quiero conocer Machu Picchu y Cusco", dates: { mode: "month", months: [6], nights: 7 } });
+    const doc = generatePlan(a, ctx);
+    const alt = doc.alternatives.find((x) => x.stops.some((s) => s.destinationId === "cusco"));
+    expect(alt).toBeTruthy();
+    const chosen = selectAlternative(structuredClone(doc), alt!.id, a, ctx);
+    const cusco = chosen.itinerary!.stops.find((s) => s.destinationId === "cusco")!;
+    const firstDays = chosen.itinerary!.days.filter((d) => d.stopId === cusco.id).slice(0, 2);
+    expect(firstDays.length).toBe(2);
+    firstDays.forEach((d) => d.activities.forEach((x) => expect(x.effort).toBeLessThan(3)));
   });
 });

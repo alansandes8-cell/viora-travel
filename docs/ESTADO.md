@@ -39,6 +39,15 @@ Fecha: 26/10/2026. Este documento separa lo que **funciona y fue probado**, lo q
 - Progreso como pasaporte con sellos, tarjeta «Tu perfil viajero» y confeti al ver la propuesta (se desactiva con «reducir movimiento»).
 - Fotos: en la plataforma salen de Unsplash/Pexels/Wikimedia si hay claves; si no hay foto, se muestra una postal ilustrada del destino rotulada «Ilustración». La vista previa usa solo ilustraciones.
 
+### Segunda ronda de ajustes de la agencia
+
+- Logo nuevo (horizontal, fondo transparente) e íconos de la app con fondo azul.
+- «Empezar de cero» en el cuestionario y «Mis viajes» (`/viajes`): cada viaje queda guardado en el dispositivo y se puede retomar o quitar. Probado de punta a punta (e2e).
+- Fotos de destinos: se buscan por lugares emblemáticos (3 por destino) y salen de la imagen principal del artículo de Wikipedia (licencia libre, horizontales); Unsplash/Pexels como alternativa. **No se pudo verificar en vivo desde el entorno de desarrollo** (sin acceso a Wikipedia): probado con respuestas simuladas. Si no hay foto apta se muestra la postal ilustrada.
+- Itinerarios: máximo 2 días de parque seguidos (1 con chicos menores de 6 o ritmo tranquilo) con «Descanso entre parques»; los parques de día completo ahora sí se programan; llegada y primer día suaves en destinos de altura.
+- Temporada: no se recomiendan playas en el pico de sargazo (mayo–agosto) ni el Caribe de playa con huracanes frecuentes (agosto–octubre), monzón para playa o calor extremo con chicos chicos; si el cliente lo pide igual, se respeta y se advierte.
+- Flexibilidad de fechas explicada con ejemplo; al enviar, si hay un error, se marca el paso en rojo y se lleva a la persona a ese paso.
+
 ### App para celular (PWA)
 
 - Instalable en Android y iPhone desde `/app` (manifiesto, íconos, service worker). Verificado en Chromium: sin errores de instalabilidad, service worker activo, página «Sin conexión» cuando no hay internet.
@@ -63,7 +72,7 @@ Fecha: 26/10/2026. Este documento separa lo que **funciona y fue probado**, lo q
 
 Entorno: Node 22, PostgreSQL 16 local, Chromium 1243. Resultados reales de esta sesión.
 
-**Unitarias y de escenarios** (`pnpm test`, Vitest): **43 pruebas pasan, 0 fallan** (3 de integración con la base se omiten si no hay base configurada).
+**Unitarias y de escenarios** (`pnpm test`, Vitest): **53 pruebas pasan, 0 fallan** (3 de integración con la base se omiten si no hay base configurada).
 
 | Escenario del pedido | Prueba | Resultado |
 |---|---|---|

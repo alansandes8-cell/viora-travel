@@ -53,7 +53,7 @@ button { font: inherit; cursor: pointer; }
 
 .top { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 20; background: var(--surface); border-bottom: 1px solid var(--line); }
 .top-in { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 68px; }
-.logo-btn { background: #fff; border: 0; border-radius: 12px; padding: 2px; display: flex; }
+.logo-btn { background: transparent; border: 0; border-radius: 12px; padding: 2px; display: flex; }
 .top-nav { display: flex; gap: 8px; align-items: center; }
 .btn { background: var(--ink); color: var(--bg); border: 0; border-radius: 999px; padding: 10px 20px; font-weight: 700; min-height: 44px; }
 .btn:hover { filter: brightness(1.1); }
@@ -72,7 +72,7 @@ button { font: inherit; cursor: pointer; }
 .home { padding-block: 28px 40px; display: grid; gap: 24px; }
 .hero { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 0.8fr); gap: 28px; align-items: center; }
 .hero > div { display: grid; gap: 16px; min-width: 0; }
-.hero-logo { width: 100%; max-width: 360px; justify-self: center; background: #fff; border-radius: 28px; }
+.hero-logo { width: 100%; max-width: 360px; justify-self: center; background: #fff; border-radius: 28px; padding: 28px; }
 .lead { color: var(--muted); font-size: 1.05rem; max-width: 62ch; }
 .row { display: flex; flex-wrap: wrap; gap: 10px; }
 .tiles { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }

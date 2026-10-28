@@ -174,7 +174,7 @@ function toAlternative(c: Scored, labels: string[], profile: TravelerProfile): A
     experienceType: experienceType(c),
     activities: c.stops.flatMap((s) => s.dest.highlights.slice(0, 3).map((h) => h.name)).slice(0, 8),
     warnings,
-    imageQuery: main.imageQuery,
+    imageQuery: main.photoSpots?.[0] ?? main.imageQuery,
     entryChecks: countries.flatMap((cc) => (ENTRY_LINKS[cc] ?? []).slice(0, 1)),
   };
 }
@@ -221,6 +221,13 @@ export function generatePlan(answers: IntakeAnswers, ctx: PlanContext): PlanDocu
       code: "known_included",
       severity: "info",
       message: "No había suficientes opciones nuevas para este perfil: algunas alternativas incluyen lugares que el cliente ya conoce.",
+    });
+  }
+  if ((candidates as { seasonRiskIncluded?: boolean }).seasonRiskIncluded) {
+    checks.push({
+      code: "season_risk_included",
+      severity: "warning",
+      message: "Para estas fechas no alcanzaban las opciones sin riesgos de temporada: alguna alternativa incluye un destino con sargazo, huracanes, monzón o calor extremo en esa época. Conviene sugerir otras fechas.",
     });
   }
   if (!top.length) {
@@ -271,7 +278,7 @@ export function selectAlternative(doc: PlanDocument, alternativeId: string, answ
 export function refreshDerived(doc: PlanDocument, ctx: PlanContext): void {
   const it = doc.itinerary;
   const profile = doc.profile;
-  const baseChecks = doc.checks.filter((c) => c.code === "no_candidates" || c.code === "known_included");
+  const baseChecks = doc.checks.filter((c) => ["no_candidates", "known_included", "season_risk_included"].includes(c.code));
   if (!it) {
     doc.checks = baseChecks;
     return;

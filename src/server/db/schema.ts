@@ -228,7 +228,7 @@ export const mediaAssets = pgTable(
   "media_assets",
   {
     id: id(),
-    provider: text("provider").notNull(), // unsplash | pexels | wikimedia | youtube | agency
+    provider: text("provider").notNull(), // wikipedia | unsplash | pexels | youtube | agency
     externalId: text("external_id").notNull(),
     kind: text("kind").notNull(), // image | video
     url: text("url").notNull(),

@@ -1,4 +1,6 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
+import { newTripAction } from "../viajes/actions";
 import { currentProposal } from "@/server/services/client-flow";
 import { Container } from "@/components/ui";
 import { TripNav } from "./trip-nav";
@@ -13,6 +15,16 @@ export default async function ViajeLayout({ children }: { children: React.ReactN
     <>
       <div className="border-b border-line bg-white no-print">
         <Container className="pt-6">
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2 text-sm">
+            <Link href="/viajes" className="font-semibold text-navy hover:underline">
+              ← Mis viajes
+            </Link>
+            <form action={newTripAction}>
+              <button type="submit" className="rounded-full border border-line bg-white px-3 py-1.5 font-semibold text-navy hover:bg-sand-2">
+                + Planificar otro viaje
+              </button>
+            </form>
+          </div>
           <div className="flex flex-wrap items-center gap-2 text-xs font-bold uppercase tracking-wider">
             <span className={p.status === "reviewed" ? "text-success" : "text-orange-brand"}>{p.status === "reviewed" ? "Propuesta revisada por VIORA" : "Propuesta preliminar"}</span>
             {p.exploratory && <span className="text-muted">· {p.travelMonths?.length ? "Fechas exactas a confirmar" : "Exploratoria, sin fechas definidas"}</span>}

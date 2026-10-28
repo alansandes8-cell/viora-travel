@@ -24,7 +24,7 @@ export function ProposalReport({
     <article className="space-y-12">
       <header className="avoid-break">
         <div className="flex items-center justify-between gap-4">
-          <Logo size={printMode ? 90 : 72} />
+          <Logo size={printMode ? 170 : 140} />
           <Badge tone={p.status === "reviewed" ? "success" : "orange"}>{p.status === "reviewed" ? "Revisada por VIORA" : "Propuesta preliminar"}</Badge>
         </div>
         <div className="relative mt-6 overflow-hidden rounded-[2rem]">

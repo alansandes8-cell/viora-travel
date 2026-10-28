@@ -20,7 +20,7 @@ export function InternalReport({ b }: { b: Bundle }) {
   return (
     <article className="mx-auto max-w-4xl bg-white p-6 text-[13px] leading-relaxed text-ink">
       <header className="flex items-center justify-between">
-        <Logo size={80} />
+        <Logo size={150} />
         <div className="text-right text-xs text-muted">
           <p className="font-bold uppercase text-danger">Documento interno · confidencial</p>
           <p>Generado el {now}</p>

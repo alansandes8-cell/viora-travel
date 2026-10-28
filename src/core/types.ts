@@ -232,7 +232,8 @@ export interface Destination {
     rain: (0 | 1 | 2 | 3)[]; // 0 seco … 3 muy lluvioso
     sea?: number[]; // temperatura del mar aproximada (°C)
   };
-  risks?: { months: number[]; kind: "hurricane" | "monsoon" | "heat" | "cold" | "crowds" | "closures" | "sargassum" | "altitude"; note: string }[];
+  /** `level: "low"` marca riesgos registrados pero históricamente poco probables (no excluyen el destino). */
+  risks?: { months: number[]; kind: "hurricane" | "monsoon" | "heat" | "cold" | "crowds" | "closures" | "sargassum" | "altitude"; note: string; level?: "low" }[];
   highSeason?: number[];
   beach?: { clarity: 1 | 2 | 3; calm: 1 | 2 | 3 }; // agua: claridad habitual y mar calmo (referencia, no garantía)
   summary: string;
@@ -242,6 +243,8 @@ export interface Destination {
   highlights: LibraryActivity[];
   tourismUrl?: string;
   imageQuery: string;
+  /** Lugares emblemáticos (títulos de artículos de Wikipedia en inglés) para buscar fotos características. */
+  photoSpots?: string[];
   firstTimerFriendly?: boolean;
 }
 
@@ -390,6 +393,8 @@ export interface PlanActivity extends Editable {
   indoor?: boolean;
   url?: string;
   alternatives?: string;
+  /** Día completo en un parque temático (para no encadenar demasiados seguidos). */
+  themePark?: boolean;
 }
 
 export interface PlanDay extends Editable {

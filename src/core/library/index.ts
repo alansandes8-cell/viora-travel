@@ -2,11 +2,12 @@ import type { Destination } from "../types";
 import { AMERICAS } from "./destinations-americas";
 import { ASIA } from "./destinations-asia";
 import { EUROPE } from "./destinations-europe";
+import { PHOTO_SPOTS } from "./photo-spots";
 
 export { KNOWN_CONNECTIONS, ENTRY_LINKS } from "./connections";
 
 /** Biblioteca semilla. En ejecución, la fuente es la tabla `destinations` (editable por la agencia). */
-export const SEED_DESTINATIONS: Destination[] = [...EUROPE, ...AMERICAS, ...ASIA];
+export const SEED_DESTINATIONS: Destination[] = [...EUROPE, ...AMERICAS, ...ASIA].map((d) => ({ ...d, photoSpots: d.photoSpots ?? PHOTO_SPOTS[d.id] }));
 
 /** Superregiones: los clusters de una misma superregión pueden combinarse en una ruta. */
 export const SUPER_REGION: Record<string, string> = {

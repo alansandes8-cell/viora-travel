@@ -77,6 +77,7 @@ function toPlanActivity(a: LibraryActivity, dest: Destination, profile: Traveler
     indoor: a.indoor,
     url: a.url,
     alternatives: a.note,
+    themePark: isParkActivity(a) || undefined,
   };
 }
 
@@ -187,6 +188,9 @@ export function buildItinerary(
   const totalNights = stopsIn.reduce((a, s) => a + s.nights, 0);
   const days: PlanDay[] = [];
   const budget = HOURS_BY_PACE[profile.pace] + (profile.kids.some((k) => k < 6) ? -1.5 : 0);
+  // Parques temáticos: nunca más de 2 días seguidos (1 con chicos menores de 6 o ritmo tranquilo).
+  const maxParkStreak = profile.kids.some((k) => k < 6) || profile.pace === "relaxed" ? 1 : 2;
+  let parkStreak = 0;
   let dayN = 1;
   stopsIn.forEach((s, si) => {
     const stop = stops[si];
@@ -204,6 +208,8 @@ export function buildItinerary(
     const lockedActs = (prev?.days ?? []).filter((d) => d.stopId === stop.id).flatMap((d) => d.activities.filter((a) => a.locked));
     const daysHere = s.nights; // la noche de llegada + días completos; el día de partida pertenece a la parada siguiente
     const restEvery = dest.kind === "beach" || dest.kind === "resort" || dest.kind === "island" ? 2 : profile.pace === "relaxed" ? 3 : 0;
+    const hasParks = pool.some(isParkActivity);
+    const altitude = (dest.risks ?? []).some((r) => r.kind === "altitude");
     let fullIndex = 0;
     for (let k = 0; k < daysHere; k++) {
       const date = startDate ? addDays(startDate, dayN - 1) : undefined;
@@ -217,7 +223,11 @@ export function buildItinerary(
       const kind: PlanDay["kind"] = isArrival ? (si === 0 ? "arrival" : "transfer") : "full";
       const activities: PlanActivity[] = [];
       let hours = isArrival ? (si === 0 ? 1.5 : 2.5) : budget;
-      const isRest = !isArrival && restEvery > 0 && fullIndex % restEvery === restEvery - 1;
+      const parkBreak = !isArrival && hasParks && parkStreak >= maxParkStreak;
+      const isRest = parkBreak || (!isArrival && restEvery > 0 && fullIndex % restEvery === restEvery - 1);
+      // Altura: llegada y primer día completo suaves para aclimatarse.
+      const acclimatizing = altitude && k <= 1;
+      if (acclimatizing && !isArrival) hours = Math.min(hours, Math.max(2.5, budget - 2.5));
       if (!isArrival) fullIndex++;
       if (!isRest) {
         // Primero se reubican actividades bloqueadas por el agente.
@@ -232,8 +242,11 @@ export function buildItinerary(
           if (isArrival && (isDayTrip || a.effort === 3)) continue;
           if (isArrival && si === 0 && (a.hours > 2 || a.effort > 1)) continue; // llegada de un vuelo largo: día liviano
           if (isDayTrip && activities.length) continue;
-          if (a.hours > hours + 1.5) continue;
+          // Un día completo (parque o excursión larga) ocupa la jornada entera aunque supere el ritmo habitual.
+          if (a.hours > hours + 1.5 && !(isDayTrip && !activities.length && !isArrival)) continue;
           if (isDayTrip && s.nights < 3 && profile.pace !== "intense") continue;
+          if (acclimatizing && a.effort === 3) continue;
+          if (isParkActivity(a) && (parkStreak >= maxParkStreak || activities.some(isParkActivity))) continue;
           activities.push(toPlanActivity(a, dest, profile));
           pool.splice(idx, 1);
           idx--;
@@ -241,6 +254,7 @@ export function buildItinerary(
           if (isDayTrip) break;
         }
       }
+      parkStreak = activities.some(isParkActivity) ? parkStreak + 1 : 0;
       const outdoor = activities.some((a) => !a.indoor);
       const indoorAlt = month && dest.climate.rain[month - 1] >= 1 && outdoor ? pool.find((a) => a.indoor) : undefined;
       const leg = legs.find((l) => l.toStopId === stop.id);
@@ -249,6 +263,7 @@ export function buildItinerary(
       let title: string;
       if (kind === "arrival") title = `Llegada a ${dest.name}`;
       else if (kind === "transfer") title = `${stops[si - 1].name} → ${dest.name}`;
+      else if (parkBreak) title = "Descanso entre parques";
       else if (isRest || !activities.length) title = dest.kind === "beach" || dest.kind === "resort" || dest.kind === "island" ? `Playa y descanso en ${dest.name}` : `Día libre en ${dest.name}`;
       else title = activities.map((a) => a.name).slice(0, 2).join(" · ");
       days.push({
@@ -266,7 +281,11 @@ export function buildItinerary(
             ? "Check-in, descanso del vuelo y primer paseo tranquilo por la zona del alojamiento."
             : kind === "transfer"
               ? "Tarde libre para instalarse y recorrer el barrio."
-              : isRest || !activities.length
+              : parkBreak
+                ? "Día sin parques para recargar energía: pileta del hotel, siesta y, si tienen ganas, un paseo liviano o compras. Alternar descanso hace que los días de parque se disfruten mucho más."
+                : acclimatizing && !activities.length
+                  ? "Día tranquilo para aclimatarse a la altura: caminar despacio, hidratarse y evitar esfuerzos."
+                  : isRest || !activities.length
                 ? "Día sin actividades programadas para descansar o recorrer a tu ritmo."
                 : hours > 1.5
                   ? "Tiempo libre por la tarde/noche."
@@ -349,6 +368,11 @@ export function buildItinerary(
       searchLinks,
     },
   };
+}
+
+/** Actividad de parque temático (día completo de parque). */
+export function isParkActivity(a: { tags?: string[]; kind?: string; themePark?: boolean }): boolean {
+  return !!a.themePark || (a.kind === "park" && !!a.tags?.includes("themeparks"));
 }
 
 export function modeLabel(m: string): string {

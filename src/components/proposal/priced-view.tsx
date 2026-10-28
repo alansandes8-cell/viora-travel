@@ -25,7 +25,7 @@ export function PricedView({ p }: { p: PricedProposal }) {
   return (
     <article className="mx-auto max-w-3xl space-y-6">
       <header className="flex items-center justify-between">
-        <Logo size={90} />
+        <Logo size={170} />
         <div className="text-right text-xs text-muted">
           <p className="font-bold uppercase text-navy">Propuesta comercial</p>
           <p>Emitida el {new Date(p.issuedAt).toLocaleDateString("es-AR")}</p>

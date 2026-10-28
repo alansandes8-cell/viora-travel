@@ -1,4 +1,6 @@
 import { bestOrder, routeLengthKm } from "./geo";
+import { isParkActivity } from "./itinerary";
+import { severeSeasonRisk } from "./scoring";
 import { addDays, nightsBetween } from "./profile";
 import type { Destination, PlanDocument, TravelerProfile, ValidationIssue } from "./types";
 
@@ -80,11 +82,21 @@ export function validateItinerary(it: Itinerary, profile: TravelerProfile, libra
   // Sobrecarga y exigencia
   for (const d of it.days) {
     const hours = d.activities.reduce((a, x) => a + x.hours, 0);
-    if (hours > PACE_HOURS[profile.pace] + (profile.pace === "intense" ? 1.5 : 0.5)) {
+    const singleFullDay = d.activities.length === 1 && hours >= 6; // parque o excursión de día completo
+    if (!singleFullDay && hours > PACE_HOURS[profile.pace] + (profile.pace === "intense" ? 1.5 : 0.5)) {
       issues.push({ code: "overloaded_day", severity: "warning", message: `Día ${d.n}: ${hours} h de actividades para un ritmo ${profile.pace === "relaxed" ? "tranquilo" : profile.pace === "intense" ? "intenso" : "equilibrado"}.`, refs: [d.id] });
     }
     if (d.effort > profile.effortCap) {
       issues.push({ code: "effort", severity: "warning", message: `Día ${d.n}: exigencia física mayor a la indicada por el cliente.`, refs: [d.id] });
+    }
+  }
+
+  // Parques temáticos: días de parque seguidos sin descanso
+  let streak = 0;
+  for (const d of it.days) {
+    streak = d.activities.some(isParkActivity) ? streak + 1 : 0;
+    if (streak === 3) {
+      issues.push({ code: "park_streak", severity: "warning", message: `Hay 3 o más días de parque seguidos (hasta el día ${d.n}). Conviene intercalar un día de descanso.`, refs: [d.id] });
     }
   }
 
@@ -94,10 +106,15 @@ export function validateItinerary(it: Itinerary, profile: TravelerProfile, libra
     for (const s of it.stops) {
       const dest = library.find((x) => x.id === s.destinationId);
       for (const r of dest?.risks ?? []) {
-        if (r.months.includes(month) && ["closures", "hurricane", "monsoon"].includes(r.kind)) {
+        if (r.months.includes(month) && ["closures", "hurricane", "monsoon", "sargassum"].includes(r.kind) && r.level !== "low") {
           issues.push({ code: `season_${r.kind}`, severity: "warning", message: `${s.name}: ${r.note}` });
         }
       }
+    }
+    for (const s of it.stops) {
+      const dest = library.find((x) => x.id === s.destinationId);
+      const severe = dest ? severeSeasonRisk(dest, month, profile) : null;
+      if (severe) issues.push({ code: "season_not_advised", severity: "warning", message: `${s.name} no es recomendable en esta época para este perfil: ${severe}`, refs: [s.id] });
     }
     for (const d of it.days) {
       for (const a of d.activities) {

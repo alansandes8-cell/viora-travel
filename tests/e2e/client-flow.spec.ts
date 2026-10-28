@@ -47,6 +47,31 @@ test.describe("Experiencia del cliente", () => {
     if (!process.env.SMTP_HOST) await expect(page.getByText(/quedó guardado en el panel/)).toBeVisible();
   });
 
+  test("Mis viajes: empezar de cero guarda el viaje anterior y permite volver a él", async ({ page }) => {
+    await completeBeachIntake(page);
+    await page.getByRole("button", { name: "+ Planificar otro viaje" }).click();
+    await page.waitForURL("**/planificar");
+    // Cuestionario limpio: ningún estilo marcado.
+    await expect(page.getByRole("button", { name: /Relax y playa/ })).toHaveAttribute("aria-pressed", "false");
+    await page.getByRole("button", { name: /Eurotrip/ }).click();
+    await expect(page.getByText("· Guardado")).toBeVisible({ timeout: 10000 });
+
+    await page.goto("/viajes");
+    await expect(page.getByRole("heading", { name: "Mis viajes" })).toBeVisible();
+    await expect(page.getByText("Con propuesta")).toHaveCount(1);
+    await expect(page.getByText("Borrador", { exact: true })).toHaveCount(1);
+    await page.getByRole("button", { name: "Ver propuesta" }).click();
+    await page.waitForURL("**/viaje");
+    await expect(page.getByRole("heading", { name: "Tus tres alternativas" })).toBeVisible();
+
+    // «Empezar de cero» desde el cuestionario también limpia todo.
+    await page.goto("/planificar");
+    page.once("dialog", (d) => d.accept());
+    await page.getByRole("button", { name: /Empezar de cero/ }).click();
+    await expect(page.getByRole("heading", { name: "¿Qué tipo de viaje soñás?" })).toBeVisible();
+    await expect(page.getByRole("button", { name: /Relax y playa/ })).toHaveAttribute("aria-pressed", "false");
+  });
+
   test("propuesta en celular @mobile", async ({ page }) => {
     await completeBeachIntake(page);
     await page.goto("/viaje/comparar");

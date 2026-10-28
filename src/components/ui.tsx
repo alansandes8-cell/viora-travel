@@ -22,8 +22,9 @@ export function Container({ children, className }: { children: ReactNode; classN
   return <div className={cx("mx-auto w-full max-w-6xl px-4 sm:px-6", className)}>{children}</div>;
 }
 
-export function Logo({ size = 120, className }: { size?: number; className?: string }) {
-  return <Image src="/brand/viora-logo.webp" alt="VIORA TRAVEL" width={size} height={size} priority className={cx("h-auto", className)} />;
+/** Logo horizontal (proporción 1146 × 446). `size` es el ancho en píxeles. */
+export function Logo({ size = 160, className }: { size?: number; className?: string }) {
+  return <Image src="/brand/viora-logo.webp" alt="VIORA TRAVEL" width={size} height={Math.round((size * 446) / 1146)} priority className={cx("h-auto", className)} />;
 }
 
 type BtnVariant = "primary" | "secondary" | "ghost" | "danger" | "whatsapp";

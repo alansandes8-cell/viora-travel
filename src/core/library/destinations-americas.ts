@@ -2,7 +2,7 @@ import type { Destination } from "../types";
 import { act as a } from "./helpers";
 
 const CARIBBEAN_HURRICANE = { months: [6, 7, 8, 9, 10, 11], kind: "hurricane" as const, note: "Temporada oficial de huracanes del Atlántico (junio a noviembre), con mayor actividad entre agosto y octubre. Recomendable seguro de viaje con cobertura adecuada." };
-const SARGASSUM = { months: [4, 5, 6, 7, 8, 9], kind: "sargassum" as const, note: "Posible llegada de sargazo en algunas playas; varía mucho año a año y por zona." };
+const SARGASSUM = { months: [4, 5, 6, 7, 8, 9], kind: "sargassum" as const, note: "Temporada de sargazo (algas en la orilla), con mayor presencia habitual entre mayo y agosto; varía mucho año a año y por playa." };
 
 /** Biblioteca inicial — Caribe, Brasil, Norteamérica, Latinoamérica y Argentina. Clima aproximado (estimación). */
 export const AMERICAS: Destination[] = [
@@ -56,7 +56,7 @@ export const AMERICAS: Destination[] = [
     tags: { beach: 3, relax: 3, romance: 2, family: 2, nightlife: 1, luxury: 2 },
     nights: { min: 5, ideal: 7, max: 12 }, costLevel: 4, tranquility: 4, familyFit: 3, walking: 1,
     climate: { hi: [30, 30, 31, 31, 32, 32, 32, 33, 33, 32, 31, 30], rain: [1, 0, 0, 0, 0, 0, 1, 0, 1, 1, 2, 1], sea: [26, 26, 26, 27, 27, 28, 28, 28, 29, 29, 28, 27] },
-    risks: [{ months: [8, 9, 10], kind: "hurricane", note: "Aruba está al sur del cinturón habitual de huracanes; el riesgo es históricamente bajo, pero no nulo." }],
+    risks: [{ months: [8, 9, 10], kind: "hurricane", level: "low", note: "Aruba está al sur del cinturón habitual de huracanes; el riesgo es históricamente bajo, pero no nulo." }],
     highSeason: [12, 1, 2, 3, 4],
     beach: { clarity: 3, calm: 3 },
     summary: "Clima seco y estable todo el año, playas de arena blanca y mar calmo.",
@@ -76,7 +76,7 @@ export const AMERICAS: Destination[] = [
     tags: { beach: 3, relax: 2, nature: 2, culture: 2, offbeat: 2, romance: 2 },
     nights: { min: 5, ideal: 7, max: 12 }, costLevel: 3, tranquility: 4, familyFit: 2, walking: 1,
     climate: { hi: [30, 30, 30, 31, 31, 32, 32, 32, 32, 31, 31, 30], rain: [1, 0, 0, 0, 0, 0, 1, 1, 1, 1, 2, 2], sea: [26, 26, 26, 27, 27, 28, 28, 28, 29, 29, 28, 27] },
-    risks: [{ months: [9, 10, 11], kind: "hurricane", note: "Fuera del cinturón principal de huracanes; riesgo bajo pero no nulo." }],
+    risks: [{ months: [9, 10, 11], kind: "hurricane", level: "low", note: "Fuera del cinturón principal de huracanes; riesgo bajo pero no nulo." }],
     highSeason: [12, 1, 2, 3, 4],
     beach: { clarity: 3, calm: 3 },
     summary: "Calas escondidas, buceo excelente y la colorida Willemstad, Patrimonio de la Humanidad.",

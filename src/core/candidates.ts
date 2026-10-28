@@ -1,7 +1,7 @@
 import { bestOrder, haversineKm } from "./geo";
 import { SUPER_REGION } from "./library";
 import { allocateNights } from "./nights";
-import { affinityOf, type CandidateStop } from "./scoring";
+import { affinityOf, severeSeasonRisk, type CandidateStop } from "./scoring";
 import type { Destination, TravelerProfile } from "./types";
 
 export interface Candidate {
@@ -35,7 +35,29 @@ export function isKnown(d: Destination, profile: TravelerProfile): boolean {
  * Genera candidatos. Los lugares que el cliente ya conoce se excluyen, salvo que haya pedido
  * incluirlos o que sin ellos no alcancen las opciones (en ese caso se marca `knownIncluded`).
  */
-export function generateCandidates(profile: TravelerProfile, library: Destination[]): Candidate[] & { knownIncluded?: boolean } {
+/** El destino es desaconsejable en TODOS los meses posibles del viaje (salvo que el cliente lo haya pedido). */
+export function seasonBlocked(d: Destination, profile: TravelerProfile): boolean {
+  if (!profile.months.length || profile.wishIds.includes(d.id)) return false;
+  return profile.months.every((m) => severeSeasonRisk(d, m, profile) !== null);
+}
+
+type CandidateList = Candidate[] & { knownIncluded?: boolean; seasonRiskIncluded?: boolean };
+
+/**
+ * Genera candidatos. Primero sin destinos desaconsejados por la época (sargazo, huracanes, monzón…);
+ * solo si así no alcanzan las opciones se los vuelve a considerar, y se marca `seasonRiskIncluded`.
+ */
+export function generateCandidates(profile: TravelerProfile, library: Destination[]): CandidateList {
+  const safe = library.filter((d) => !seasonBlocked(d, profile));
+  const first = generateFrom(profile, safe);
+  if (primaries(first) >= 3 || safe.length === library.length) return first;
+  const all = generateFrom(profile, library);
+  if (primaries(all) <= primaries(first)) return first;
+  all.seasonRiskIncluded = true;
+  return all;
+}
+
+function generateFrom(profile: TravelerProfile, library: Destination[]): CandidateList {
   const allowed = library.filter((d) => !profile.excludedIds.includes(d.id));
   const fresh = allowed.filter((d) => profile.includeKnown || !isKnown(d, profile));
   const strict = buildCandidates(profile, fresh);
@@ -50,8 +72,8 @@ export function generateCandidates(profile: TravelerProfile, library: Destinatio
   const widened = [...merged.values()];
   if (primaries(widened) >= 3) return widened;
 
-  const relaxed = buildCandidates(profile, allowed) as Candidate[] & { knownIncluded?: boolean };
-  relaxed.knownIncluded = true;
+  const relaxed = buildCandidates(profile, allowed) as CandidateList;
+  relaxed.knownIncluded = relaxed.some((c) => c.stops.some((s) => isKnown(s.dest, profile)));
   return relaxed;
 }
 

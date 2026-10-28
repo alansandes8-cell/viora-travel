@@ -1,7 +1,8 @@
 import "server-only";
 import { cookies } from "next/headers";
 import { after } from "next/server";
-import { desc, eq } from "drizzle-orm";
+import { desc, eq, inArray } from "drizzle-orm";
+import { MONTHS_ES, TRIP_STYLE_DEFS } from "@/core/catalog";
 import { applyChanges, parseChangeRequest, type ChangeOp } from "@/core/changes";
 import { budgetAmountSchema, contactSchema, intakeSchema } from "@/core/intake-schema";
 import { generatePlan, selectAlternative } from "@/core/plan";
@@ -18,19 +19,38 @@ import { agency, getSetting, loadLibrary, planContext } from "../settings";
 import { createShareLink, createVersion, nextProjectCode, publishClientSnapshot, seedProjectWork, summarize } from "./projects";
 
 export const TRIP_COOKIE = "viora_trip";
+/** Viajes guardados en este navegador («Mis viajes»): lista de tokens, solo legible por el servidor. */
+export const TRIPS_COOKIE = "viora_trips";
+const MAX_SAVED_TRIPS = 12;
+const COOKIE_OPTS = {
+  httpOnly: true,
+  sameSite: "lax" as const,
+  secure: process.env.NODE_ENV === "production",
+  path: "/",
+  maxAge: 60 * 60 * 24 * 90,
+};
 
 async function cookieToken(): Promise<string | null> {
   return (await cookies()).get(TRIP_COOKIE)?.value ?? null;
 }
 
+async function savedTokens(): Promise<string[]> {
+  try {
+    const raw = JSON.parse((await cookies()).get(TRIPS_COOKIE)?.value ?? "[]");
+    return Array.isArray(raw) ? raw.filter((t): t is string => typeof t === "string" && t.length <= 100).slice(0, MAX_SAVED_TRIPS) : [];
+  } catch {
+    return [];
+  }
+}
+
+async function writeSavedTokens(tokens: string[]) {
+  (await cookies()).set(TRIPS_COOKIE, JSON.stringify([...new Set(tokens)].slice(0, MAX_SAVED_TRIPS)), COOKIE_OPTS);
+}
+
 async function setTripCookie(token: string) {
-  (await cookies()).set(TRIP_COOKIE, token, {
-    httpOnly: true,
-    sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
-    path: "/",
-    maxAge: 60 * 60 * 24 * 90,
-  });
+  (await cookies()).set(TRIP_COOKIE, token, COOKIE_OPTS);
+  const saved = await savedTokens();
+  if (!saved.includes(token)) await writeSavedTokens([token, ...saved]);
 }
 
 async function currentIntake() {
@@ -303,4 +323,96 @@ export async function requestQuote(raw: unknown): Promise<{ ok: boolean; error?:
   await db().update(schema.tripProjects).set({ clientId, statusKey: project.statusKey === "new" ? "planning" : project.statusKey, priority: "high", updatedAt: new Date() }).where(eq(schema.tripProjects.id, project.id));
   await logActivity("client.quote_requested", { projectId: project.id, actorKind: "client", details: { channel: c.preferredChannel, notification: mail.status } });
   return { ok: true, notified: mail.status };
+}
+
+// ───────────────────────── Mis viajes ─────────────────────────
+
+export interface SavedTrip {
+  id: string;
+  title: string;
+  detail: string;
+  hasProposal: boolean;
+  current: boolean;
+  updatedAt: string;
+}
+
+function draftTitle(a: Partial<IntakeAnswers>): string {
+  const styles = (a.tripStyles ?? []).map((s) => TRIP_STYLE_DEFS.find((d) => d.id === s)?.label).filter(Boolean);
+  if (styles.length) return styles.slice(0, 2).join(" + ");
+  const dream = (a.dreamText ?? "").trim();
+  return dream ? (dream.length > 60 ? `${dream.slice(0, 57)}…` : dream) : "Viaje sin título";
+}
+
+function draftDetail(a: Partial<IntakeAnswers>): string {
+  const parts: string[] = [];
+  const d = a.dates;
+  if (d?.mode === "exact" && d.departure) parts.push(`Salida ${d.departure.split("-").reverse().join("/")}`);
+  else if (d?.months?.length) parts.push(d.months.map((m) => MONTHS_ES[m - 1]).join(", "));
+  const n = d?.nights;
+  if (n) parts.push(`${n} noches`);
+  if (a.party?.adults) parts.push(`${a.party.adults + (a.party.childrenAges?.length ?? 0)} viajeros`);
+  return parts.join(" · ");
+}
+
+const isEmptyDraft = (a: Partial<IntakeAnswers>) => !(a.tripStyles?.length || (a.dreamText ?? "").trim() || a.dates?.months?.length || a.dates?.departure);
+
+/** Viajes guardados en este navegador, del más reciente al más viejo. */
+export async function listSavedTrips(): Promise<SavedTrip[]> {
+  const current = await cookieToken();
+  const tokens = [...new Set([...(current ? [current] : []), ...(await savedTokens())])];
+  if (!tokens.length) return [];
+  const hashes = tokens.map(hashToken);
+  const rows = await db().query.intakeSessions.findMany({ where: inArray(schema.intakeSessions.tokenHash, hashes) });
+  const projectIds = rows.map((r) => r.projectId).filter((x): x is string => !!x);
+  const projects = projectIds.length ? await db().query.tripProjects.findMany({ where: inArray(schema.tripProjects.id, projectIds) }) : [];
+  const currentHash = current ? hashToken(current) : null;
+  return rows
+    .filter((r) => r.expiresAt > new Date() && (r.projectId || !isEmptyDraft(r.answers)))
+    .map((r) => {
+      const project = projects.find((p) => p.id === r.projectId);
+      return {
+        id: r.id,
+        title: project?.name ?? draftTitle(r.answers),
+        detail: [project?.destinationSummary, draftDetail(r.answers)].filter(Boolean).join(" · "),
+        hasProposal: !!project?.publishedVersionId,
+        current: r.tokenHash === currentHash,
+        updatedAt: r.updatedAt.toISOString(),
+      };
+    })
+    .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+}
+
+async function tokenForTrip(id: string): Promise<string | null> {
+  const current = await cookieToken();
+  const tokens = [...new Set([...(current ? [current] : []), ...(await savedTokens())])];
+  if (!tokens.length || !/^[0-9a-f-]{36}$/i.test(id)) return null;
+  const row = await db().query.intakeSessions.findFirst({ where: eq(schema.intakeSessions.id, id) });
+  return (row && tokens.find((t) => hashToken(t) === row.tokenHash)) ?? null;
+}
+
+/** Empieza un viaje nuevo desde cero. El actual queda guardado en «Mis viajes». */
+export async function startNewTrip(): Promise<void> {
+  const current = await cookieToken();
+  if (current) {
+    const saved = await savedTokens();
+    if (!saved.includes(current)) await writeSavedTokens([current, ...saved]);
+  }
+  (await cookies()).delete(TRIP_COOKIE);
+}
+
+/** Abre un viaje guardado (solo de los guardados en este navegador). */
+export async function openSavedTrip(id: string): Promise<{ ok: boolean; hasProposal?: boolean }> {
+  const token = await tokenForTrip(id);
+  if (!token) return { ok: false };
+  const row = await db().query.intakeSessions.findFirst({ where: eq(schema.intakeSessions.id, id) });
+  await setTripCookie(token);
+  return { ok: true, hasProposal: !!row?.projectId };
+}
+
+/** Quita un viaje de «Mis viajes» en este navegador (la agencia conserva su proyecto). */
+export async function forgetSavedTrip(id: string): Promise<void> {
+  const token = await tokenForTrip(id);
+  if (!token) return;
+  await writeSavedTokens((await savedTokens()).filter((t) => t !== token));
+  if ((await cookieToken()) === token) (await cookies()).delete(TRIP_COOKIE);
 }
