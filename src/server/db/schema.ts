@@ -405,3 +405,19 @@ export const aiRuns = internal.table("ai_runs", {
   error: text("error"),
   createdAt: createdAt(),
 });
+
+/** Conversaciones de Viorita-bot (asistente de la web). Solo las lee el panel. */
+export const chatConversations = internal.table(
+  "chat_conversations",
+  {
+    id: id(),
+    clientId: uuid("client_id").references(() => clients.id, { onDelete: "cascade" }),
+    tokenHash: text("token_hash").notNull().unique(),
+    messages: jsonb("messages").$type<{ role: "user" | "assistant"; content: string; at: string }[]>().notNull().default([]),
+    status: text("status").notNull().default("open"), // open | handled
+    page: text("page"),
+    createdAt: createdAt(),
+    updatedAt: ts("updated_at").notNull().defaultNow(),
+  },
+  (t) => [index("chat_conversations_client_idx").on(t.clientId)],
+);

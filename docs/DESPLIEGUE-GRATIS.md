@@ -202,7 +202,8 @@ Editá el archivo de configuración con `nano .env` (guardás con Ctrl+O y Enter
 
 | Qué | Dónde se consigue | Variable del `.env` |
 |---|---|---|
-| Fotos de destinos | https://unsplash.com/developers → *New Application* → «Access Key» | `UNSPLASH_ACCESS_KEY` |
+| **Viorita-bot con IA y texto libre inteligente** (recomendado) | https://aistudio.google.com/apikey → iniciá sesión con tu Google → **Create API key** → copiala. Es gratis, con un límite diario de consultas | `GEMINI_API_KEY=la clave` |
+| Fotos de destinos (extra) | Las fotos de los lugares emblemáticos salen solas de Wikipedia. Opcional: https://unsplash.com/developers → *New Application* → «Access Key» | `UNSPLASH_ACCESS_KEY` |
 | Más fotos | https://www.pexels.com/api/ → «Your API Key» | `PEXELS_API_KEY` |
 | Videos | https://console.cloud.google.com → crear proyecto → habilitar «YouTube Data API v3» → Credenciales → Clave de API | `YOUTUBE_API_KEY` |
 | Avisos por email | Tu cuenta de Google → Seguridad → Verificación en 2 pasos (activarla) → **Contraseñas de aplicaciones** → crear «VIORA» | `SMTP_USER=tu@gmail.com`, `SMTP_PASS=la contraseña de 16 letras`, `SMTP_FROM=tu@gmail.com` |

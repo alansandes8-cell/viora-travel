@@ -402,3 +402,69 @@ describe("Reglas de itinerario y temporada (ajuste pedido por la agencia)", () =
     firstDays.forEach((d) => d.activities.forEach((x) => expect(x.effort).toBeLessThan(3)));
   });
 });
+
+describe("Texto libre: países y experiencias (ajuste pedido por la agencia)", () => {
+  const all = (doc: PlanDocument) => doc.alternatives.flatMap((a) => a.stops.map((s) => lib.find((d) => d.id === s.destinationId)!));
+  it("«21 días en Italia, las mejores ciudades»: solo Italia, recorrido de varias ciudades y 20 noches", () => {
+    const doc = generatePlan(answers({ dreamText: "tengo 21 días en Italia y quiero que me recomiende las mejores ciudades" }), ctx);
+    expect(doc.alternatives.length).toBeGreaterThan(0);
+    all(doc).forEach((d) => expect(d.countryCode).toBe("IT"));
+    doc.alternatives.forEach((a) => {
+      expect(a.stops.length).toBeGreaterThan(1);
+      expect(a.stops.reduce((x, s) => x + s.nights, 0)).toBe(20);
+    });
+  });
+  it("«quiero hacer trekking»: recomienda destinos que de verdad tienen trekking y lo pone en el itinerario", () => {
+    const a = answers({ dreamText: "Quiero hacer trekking en la montaña, paisajes increíbles", dates: { mode: "month", months: [11], nights: 10 } });
+    const doc = generatePlan(a, ctx);
+    const trekking = new Set(["el-calafate", "bariloche", "cusco", "ushuaia", "costa-rica", "atacama", "salta"]);
+    doc.alternatives.forEach((alt) => expect(alt.stops.some((s) => trekking.has(s.destinationId!))).toBe(true));
+    const chosen = selectAlternative(structuredClone(doc), doc.alternatives[0].id, a, ctx);
+    const names = chosen.itinerary!.days.flatMap((d) => d.activities.map((x) => x.name)).join(" ");
+    expect(names).toMatch(/trek|camin|laguna|glaciar|chaltén|volcán|cerro/i);
+  });
+});
+
+describe("Lectura del texto libre (atajo a propuestas)", () => {
+  it("entiende país, noches, pareja y recorrido, y alcanza para proponer", async () => {
+    const { readDreamRules, applyReading, readingIsEnough, sanitizeReading } = await import("@/core/dream");
+    const r = readDreamRules("Tengo 21 días en Italia en septiembre con mi pareja y quiero recorrer las mejores ciudades", lib);
+    expect(r.countries).toEqual(["IT"]);
+    expect(r.nights).toBe(20);
+    expect(r.months).toEqual([9]);
+    expect(r.partyType).toBe("couple");
+    expect(r.multiCity).toBe(true);
+    expect(readingIsEnough(r)).toBe(true);
+    const a = applyReading(answers({ dreamText: "Tengo 21 días en Italia en septiembre con mi pareja y quiero recorrer las mejores ciudades" }), r);
+    const doc = generatePlan(a, ctx);
+    doc.alternatives.forEach((alt) => alt.stops.forEach((s) => expect(lib.find((d) => d.id === s.destinationId)!.countryCode).toBe("IT")));
+    // Lo que devuelva una IA se valida contra la biblioteca: no se aceptan destinos ni países inventados.
+    const bad = sanitizeReading({ destinations: ["atlantida", "roma"], countries: ["XX", "it"], nights: 500, styles: ["hack" as never] }, lib);
+    expect(bad.destinations).toEqual(["roma"]);
+    expect(bad.countries).toEqual(["IT"]);
+    expect(bad.nights).toBeUndefined();
+    expect(bad.styles).toEqual([]);
+  });
+});
+
+describe("Gastos diarios orientativos", () => {
+  it("Italia en euros, según nivel de costo y de viaje, y llegan a la vista del cliente sin otros importes", () => {
+    const a = answers({ dreamText: "21 días recorriendo Italia", budget: { tier: "moderate" } });
+    const pick = (x: typeof a) => {
+      const d = generatePlan(x, ctx);
+      return selectAlternative(d, d.alternatives[0].id, x, ctx);
+    };
+    const doc = pick(a);
+    expect(doc.dailySpend?.length).toBe(doc.itinerary!.stops.length);
+    doc.dailySpend!.forEach((d) => {
+      expect(d.currency).toBe("EUR");
+      expect(d.low).toBeGreaterThan(0);
+      expect(d.high).toBeGreaterThan(d.low);
+    });
+    const p = toClientProposal(doc, "preliminary");
+    expect(p.dailySpend.length).toBe(doc.itinerary!.stops.length);
+    expect(scanForMoney(p)).toEqual([]);
+    const lux = pick({ ...a, budget: { tier: "unlimited" } });
+    expect(lux.dailySpend![0].low).toBeGreaterThan(doc.dailySpend![0].low);
+  });
+});

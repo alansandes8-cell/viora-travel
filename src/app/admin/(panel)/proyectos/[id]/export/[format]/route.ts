@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireStaff } from "@/server/auth/session";
 import { componentsCsv, projectXlsx } from "@/server/exports";
-import { renderPdf, signedPrintUrl } from "@/server/pdf";
+import { relativeRedirect, renderPdf, signedPrintUrl } from "@/server/pdf";
 import { projectBundle } from "@/server/services/admin";
 
 export async function GET(req: Request, ctx: RouteContext<"/admin/proyectos/[id]/export/[format]">) {
@@ -27,7 +27,7 @@ export async function GET(req: Request, ctx: RouteContext<"/admin/proyectos/[id]
       } catch (e) {
         console.error("[viora] PDF interno falló", (e as Error).message);
       }
-      return NextResponse.redirect(new URL(`/admin/proyectos/${id}/informe`, req.url), 303);
+      return relativeRedirect(`/admin/proyectos/${id}/informe`);
     }
     default:
       return new NextResponse("Formato no soportado", { status: 400 });

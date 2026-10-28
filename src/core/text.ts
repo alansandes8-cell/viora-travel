@@ -17,6 +17,9 @@ const ALIASES: Record<string, string[]> = {
   florencia: ["florence", "firenze", "toscana"],
   venecia: ["venice"],
   amalfi: ["positano", "capri", "costa amalfitana", "napoles", "sorrento"],
+  "cinque-terre": ["cinque terre", "cinco tierras", "manarola", "vernazza", "riomaggiore", "monterosso"],
+  "milan-como": ["milan", "milano", "lago de como", "bellagio"],
+  sicilia: ["sicilia", "taormina", "siracusa", "palermo", "catania", "etna"],
   amsterdam: ["holanda", "amsterdam"],
   brujas: ["bruges", "brugge", "belgica", "bruselas", "gante"],
   praga: ["prague"],
@@ -155,8 +158,9 @@ const AVOID_CUE = /\b(no quiero (ir|volver|repetir)|no me interesa|no me gusta|e
  * Separa lo que el texto libre menciona como deseo, como ya conocido o como algo a evitar.
  * «Ya conozco Madrid y Roma, quiero algo distinto» no debe convertir Madrid en un deseo.
  */
-export function classifyMentions(text: string, library: Destination[]): { wish: string[]; known: string[]; avoid: string[]; knownCountries: string[] } {
+export function classifyMentions(text: string, library: Destination[]): { wish: string[]; known: string[]; avoid: string[]; knownCountries: string[]; wishCountries: string[] } {
   const wish = new Set<string>();
+  const wishCountries = new Set<string>();
   const known = new Set<string>();
   const avoid = new Set<string>();
   const knownCountries = new Set<string>();
@@ -176,9 +180,23 @@ export function classifyMentions(text: string, library: Destination[]): { wish: 
         const country = normalize(d.country.split("(")[0]);
         if (country.length > 3 && ` ${c} `.includes(` ${country} `)) knownCountries.add(d.countryCode);
       }
-    } else ids.forEach((id) => wish.add(id));
+    } else {
+      ids.forEach((id) => wish.add(id));
+      countriesIn(c, library).forEach((cc) => wishCountries.add(cc));
+    }
   }
-  return { wish: [...wish], known: [...known], avoid: [...avoid], knownCountries: [...knownCountries] };
+  return { wish: [...wish], known: [...known], avoid: [...avoid], knownCountries: [...knownCountries], wishCountries: [...wishCountries] };
+}
+
+/** Códigos de los países de la biblioteca nombrados en un texto ya normalizado. */
+function countriesIn(normalized: string, library: Destination[]): string[] {
+  const t = ` ${normalized} `;
+  const out = new Set<string>();
+  for (const d of library) {
+    const country = normalize(d.country.split("(")[0]);
+    if (country.length > 3 && t.includes(` ${country} `)) out.add(d.countryCode);
+  }
+  return [...out];
 }
 
 /** Códigos de país de las entradas que son países (no ciudades) de la biblioteca. */

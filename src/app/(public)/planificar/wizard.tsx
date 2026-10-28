@@ -19,7 +19,6 @@ import {
   LODGING_EMOJI,
   LODGING_LABELS,
   MONTHS_ES,
-  ORIGIN_CITIES,
   PARTY_EMOJI,
   PRIORITY_DEFS,
   TRANSPORT_EMOJI,
@@ -30,7 +29,9 @@ import { THIS_OR_THAT } from "@/core/game";
 import type { SmartQuestion } from "@/core/questions";
 import type { IntakeAnswers, LodgingType, PartyType, Priority, TransportMode, TripStyle } from "@/core/types";
 import { ACCENTS, Button, Field, Notice, cx, inputClass } from "@/components/ui";
-import { newTripDraftAction, saveDraftAction, smartQuestionsAction, submitAction } from "./actions";
+import { applyReading } from "@/core/dream";
+import { PlaceSearch } from "@/components/place-search";
+import { interpretDreamAction, newTripDraftAction, saveDraftAction, smartQuestionsAction, submitAction } from "./actions";
 
 const STEPS = [
   { key: "style", emoji: "✈️", title: "¿Qué tipo de viaje soñás?", subtitle: "Elegí uno o varios estilos, o contalo con tus palabras." },
@@ -75,6 +76,8 @@ function merge(initial: Partial<IntakeAnswers> | null): IntakeAnswers {
 }
 
 type StepKey = (typeof STEPS)[number]["key"];
+type AirportOption = { iata: string; name: string; city: string; country: string; lat: number; lng: number };
+type PlaceOption = { kind: "city" | "country"; label: string; detail?: string };
 
 /** Paso del cuestionario al que pertenece un campo (p. ej. «dates.return» → «dates»). */
 function stepOfField(path: string): StepKey {
@@ -122,13 +125,11 @@ export function Wizard({
   initial,
   initialStep,
   preselect,
-  suggestions,
   hasProposal,
 }: {
   initial: Partial<IntakeAnswers> | null;
   initialStep: number;
   preselect?: TripStyle;
-  suggestions: string[];
   hasProposal: boolean;
 }) {
   const router = useRouter();
@@ -147,6 +148,25 @@ export function Wizard({
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [proposalExists, setProposalExists] = useState(hasProposal);
   const [resetting, startReset] = useTransition();
+  const [reading, setReading] = useState<Awaited<ReturnType<typeof interpretDreamAction>>>(null);
+  const [readingFor, setReadingFor] = useState("");
+  const [reading_, startReading] = useTransition();
+  // Hasta dónde llegó: se puede volver a cualquier paso ya visitado tocando su sello.
+  const [maxReached, setMaxReached] = useState(() => Math.min(Math.max(0, initialStep), STEPS.length - 1));
+  if (step > maxReached) setMaxReached(step);
+
+  // Interpreta el texto libre mientras la persona escribe (con una pequeña espera).
+  const dreamText = a.dreamText ?? "";
+  useEffect(() => {
+    if (STEPS[step].key !== "style" || dreamText.trim().length < 15 || dreamText === readingFor) return;
+    const t = setTimeout(() => {
+      startReading(async () => {
+        setReading(await interpretDreamAction(dreamText).catch(() => null));
+        setReadingFor(dreamText);
+      });
+    }, 1200);
+    return () => clearTimeout(t);
+  }, [dreamText, step, readingFor]);
   const firstRender = useRef(true);
   const headingRef = useRef<HTMLHeadingElement>(null);
 
@@ -222,6 +242,8 @@ export function Wizard({
     const e = validate(step);
     setErrors(e);
     if (Object.keys(e).length) return;
+    // Lo entendido del texto libre completa los pasos siguientes (sin pisar lo ya elegido).
+    if (STEPS[step].key === "style" && reading && readingFor === dreamText) setA((prev) => applyReading(prev, reading.reading));
     if (STEPS[step + 1]?.key === "smart") setQuestions(null);
     setStep((s) => Math.min(s + 1, STEPS.length - 1));
   }
@@ -248,10 +270,12 @@ export function Wizard({
       setProposalExists(false);
       setSaved("idle");
       setStep(0);
+      setMaxReached(0);
     });
   }
 
-  function submit() {
+  function submit(override?: IntakeAnswers) {
+    const src = override ?? a;
     // Antes de enviar se revisan TODOS los pasos, no solo el último.
     const e = STEPS.reduce<Record<string, string>>((acc, _, i) => ({ ...acc, ...validate(i) }), {});
     if (Object.keys(e).length) return showErrors(e);
@@ -260,9 +284,9 @@ export function Wizard({
     const amount = Number(budgetAmount.amount.replace(/\./g, "").replace(",", "."));
     const budget = amount > 0 ? { amount, currency: budgetAmount.currency, per: budgetAmount.per } : undefined;
     const payload: IntakeAnswers = {
-      ...a,
-      dates: a.dates.mode === "exact" ? { ...a.dates, months: undefined, nights: undefined } : { ...a.dates, departure: undefined, return: undefined },
-      party: { ...a.party, childrenAges: a.party.type === "family" || a.party.childrenAges.length ? a.party.childrenAges : [] },
+      ...src,
+      dates: src.dates.mode === "exact" ? { ...src.dates, months: undefined, nights: undefined } : { ...src.dates, departure: undefined, return: undefined },
+      party: { ...src.party, childrenAges: src.party.type === "family" || src.party.childrenAges.length ? src.party.childrenAges : [] },
     };
     startSubmit(async () => {
       const r = await submitAction(payload, budget);
@@ -319,23 +343,34 @@ export function Wizard({
             <RotateCcw className="h-3.5 w-3.5" aria-hidden /> {resetting ? "Limpiando…" : "Empezar de cero"}
           </button>
         </div>
-        <ol className="mt-3 flex flex-wrap gap-1.5" aria-hidden>
+        <ol className="mt-3 flex flex-wrap gap-1.5" aria-label="Pasos del cuestionario">
           {STEPS.map((x, i) => (
-            <li
-              key={x.key}
-              title={x.title}
-              className={cx(
-                "flex h-7 w-7 items-center justify-center rounded-full border-2 text-xs font-bold sm:h-8 sm:w-8",
-                errorSteps.has(x.key)
-                  ? "border-danger bg-danger/10 text-danger"
-                  : i < step
-                    ? "stamp -rotate-6 border-teal-brand bg-teal-brand/10 text-base"
-                    : i === step
-                      ? "border-teal-brand bg-white text-teal-brand"
-                      : "border-dashed border-line bg-white text-muted",
-              )}
-            >
-              {errorSteps.has(x.key) ? "!" : i < step ? x.emoji : i + 1}
+            <li key={x.key}>
+              <button
+                type="button"
+                title={i <= maxReached ? `Ir a: ${x.title}` : x.title}
+                aria-label={`Paso ${i + 1}: ${x.title}`}
+                aria-current={i === step ? "step" : undefined}
+                disabled={i > maxReached || i === step}
+                onClick={() => {
+                  if (STEPS[i].key === "smart") setQuestions(null);
+                  setStep(i);
+                }}
+                className={cx(
+                  "flex h-7 w-7 items-center justify-center rounded-full border-2 text-xs font-bold transition-transform enabled:hover:scale-110 disabled:cursor-default sm:h-8 sm:w-8",
+                  errorSteps.has(x.key)
+                    ? "border-danger bg-danger/10 text-danger"
+                    : i < step
+                      ? "stamp -rotate-6 border-teal-brand bg-teal-brand/10 text-base"
+                      : i === step
+                        ? "border-teal-brand bg-white text-teal-brand"
+                        : i <= maxReached
+                          ? "border-teal-brand bg-teal-brand/10 text-base"
+                          : "border-dashed border-line bg-white text-muted",
+                )}
+              >
+                {errorSteps.has(x.key) ? "!" : i !== step && i <= maxReached ? x.emoji : i + 1}
+              </button>
             </li>
           ))}
         </ol>
@@ -381,6 +416,34 @@ export function Wizard({
             <Field label="O contanos tu idea con tus palabras" hint="Por ejemplo: «Quiero 14 días de playa con agua turquesa y buena comida» o «Ya conozco Madrid y Roma, quiero algo distinto»." htmlFor="dream" error={errors.style}>
               <textarea id="dream" rows={4} maxLength={1500} className={inputClass} value={a.dreamText ?? ""} onChange={(e) => set("dreamText", e.target.value)} placeholder="Imaginá tu viaje ideal…" />
             </Field>
+            {(reading_ || (reading && readingFor === dreamText && reading.chips.length > 0)) && (
+              <div className="rounded-2xl border border-teal-brand/40 bg-teal-brand/5 p-4" aria-live="polite">
+                {reading_ && !reading ? (
+                  <p className="text-sm text-muted">✨ Leyendo tu idea…</p>
+                ) : reading ? (
+                  <>
+                    <p className="text-sm font-semibold text-navy">✨ Esto es lo que entendimos:</p>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {reading.chips.map((c) => (
+                        <span key={c} className="rounded-full bg-white px-3 py-1 text-sm font-semibold text-navy shadow-soft">
+                          {c}
+                        </span>
+                      ))}
+                    </div>
+                    {reading.enough ? (
+                      <div className="mt-3 flex flex-wrap items-center gap-3">
+                        <Button onClick={() => submit(applyReading(a, reading.reading))}>
+                          Ver mis propuestas ahora <Sparkles className="h-4 w-4" aria-hidden />
+                        </Button>
+                        <span className="text-sm text-muted">o tocá «Siguiente» para afinar con más preguntas (opcional).</span>
+                      </div>
+                    ) : (
+                      <p className="mt-2 text-sm text-muted">Contanos un poco más (adónde o qué tipo de viaje) o seguí con las preguntas.</p>
+                    )}
+                  </>
+                ) : null}
+              </div>
+            )}
           </div>
         )}
 
@@ -435,7 +498,14 @@ export function Wizard({
             {a.dates.mode === "exact" && (
               <div className="grid gap-4 sm:grid-cols-2">
                 <Field label="Salida" htmlFor="dep">
-                  <input id="dep" type="date" className={inputClass} value={a.dates.departure ?? ""} min={new Date().toISOString().slice(0, 10)} onChange={(e) => set("dates", { ...a.dates, departure: e.target.value })} />
+                  <input id="dep" type="date" className={inputClass} value={a.dates.departure ?? ""} min={new Date().toISOString().slice(0, 10)} onChange={(e) => {
+                      const departure = e.target.value;
+                      // Regreso sugerido con la misma duración (o una semana), para no buscarlo desde cero en el calendario.
+                      const keep = a.dates.departure && a.dates.return && a.dates.return > a.dates.departure ? Math.round((Date.parse(a.dates.return) - Date.parse(a.dates.departure)) / 86400000) : a.dates.nights || 7;
+                      const moveReturn = departure && (!a.dates.return || a.dates.return <= departure || !!a.dates.departure);
+                      set("dates", { ...a.dates, departure, return: moveReturn ? new Date(Date.parse(departure) + keep * 86400000).toISOString().slice(0, 10) : a.dates.return });
+                    }}
+                  />
                 </Field>
                 <Field label="Regreso" htmlFor="ret">
                   <input id="ret" type="date" className={inputClass} value={a.dates.return ?? ""} min={a.dates.departure} onChange={(e) => set("dates", { ...a.dates, return: e.target.value })} />
@@ -502,36 +572,32 @@ export function Wizard({
 
         {S.key === "origin" && (
           <div className="space-y-6">
-            <Field label="Ciudad de salida" htmlFor="city" error={errors.origin}>
-              <select
-                id="city"
-                className={inputClass}
-                value={ORIGIN_CITIES.some((c) => c.city === a.origin.city) ? a.origin.city : "__other"}
-                onChange={(e) => {
-                  const c = ORIGIN_CITIES.find((x) => x.city === e.target.value);
-                  set("origin", c ? { ...a.origin, city: c.city, country: c.country, airport: undefined } : { ...a.origin, city: "", country: "" });
-                }}
-              >
-                {ORIGIN_CITIES.map((c) => (
-                  <option key={c.city} value={c.city}>
-                    {c.city}, {c.country} ({c.airports.join(" / ")})
-                  </option>
-                ))}
-                <option value="__other">Otra ciudad…</option>
-              </select>
-            </Field>
-            {!ORIGIN_CITIES.some((c) => c.city === a.origin.city) && (
-              <div className="grid gap-4 sm:grid-cols-3">
-                <Field label="Ciudad" htmlFor="ocity">
-                  <input id="ocity" className={inputClass} value={a.origin.city} onChange={(e) => set("origin", { ...a.origin, city: e.target.value })} />
-                </Field>
-                <Field label="País" htmlFor="ocountry">
-                  <input id="ocountry" className={inputClass} value={a.origin.country} onChange={(e) => set("origin", { ...a.origin, country: e.target.value })} />
-                </Field>
-                <Field label="Aeropuerto (código)" hint="Opcional, ej.: COR" htmlFor="oair">
-                  <input id="oair" maxLength={3} className={inputClass} value={a.origin.airport ?? ""} onChange={(e) => set("origin", { ...a.origin, airport: e.target.value.toUpperCase() })} />
-                </Field>
+            <Field label="Ciudad o aeropuerto de salida" hint="Escribí la ciudad, el país o el código del aeropuerto (por ejemplo: Córdoba, Montevideo o EZE)." htmlFor="origin-search" error={errors.origin}>
+              <div className="rounded-xl border border-line bg-white px-2 py-1">
+                <PlaceSearch<AirportOption>
+                  tipo="aeropuertos"
+                  id="origin-search"
+                  placeholder="Buscá tu aeropuerto…"
+                  keyOf={(x) => x.iata}
+                  render={(x) => (
+                    <span className="flex items-baseline gap-2">
+                      <b className="text-navy">{x.city}</b>
+                      <span className="rounded bg-sand-2 px-1.5 text-xs font-bold text-navy">{x.iata}</span>
+                      <span className="truncate text-muted">
+                        {x.name} · {x.country}
+                      </span>
+                    </span>
+                  )}
+                  onPick={(x) => set("origin", { ...a.origin, city: x.city, country: x.country, airport: x.iata, lat: x.lat, lng: x.lng })}
+                />
               </div>
+            </Field>
+            {a.origin.city && (
+              <p className="flex flex-wrap items-center gap-2 rounded-xl bg-sand-2 px-3 py-2 text-sm text-navy">
+                ✈️ Salís desde <b>{a.origin.city}</b>
+                {a.origin.airport ? <span className="rounded bg-white px-1.5 text-xs font-bold">{a.origin.airport}</span> : null}
+                <span className="text-muted">· {a.origin.country}</span>
+              </p>
             )}
             <Field label="Vuelos">
               <div className="flex flex-wrap gap-2">
@@ -635,22 +701,8 @@ export function Wizard({
 
         {S.key === "budget" && (
           <div className="space-y-6">
-            <div className="grid gap-3 sm:grid-cols-2">
-              {BUDGET_TIER_DEFS.map((t) => (
-                <button key={t.id} type="button" aria-pressed={a.budget.tier === t.id} onClick={() => set("budget", { ...a.budget, tier: t.id })} className={cx("flex items-start gap-3 rounded-2xl border bg-white p-4 text-left", a.budget.tier === t.id ? "border-2 border-orange-brand shadow-soft" : "border-line")}>
-                  <span className="text-2xl leading-none" aria-hidden>
-                    {t.emoji}
-                  </span>
-                  <span>
-                    <span className="block font-semibold text-navy">{t.label}</span>
-                    <span className="text-sm text-muted">{t.hint}</span>
-                  </span>
-                </button>
-              ))}
-            </div>
-            <Notice>El nivel se interpreta según la región y la duración: un mismo monto rinde distinto en el Caribe, en Brasil o en Europa. Esta información es solo para orientar la propuesta.</Notice>
             <div className="grid gap-4 sm:grid-cols-3">
-              <Field label="Monto aproximado (opcional)" hint="Solo lo ve el equipo de VIORA." htmlFor="amount" error={errors.budget}>
+              <Field label="¿Con qué presupuesto contás?" hint="Aproximado y opcional. Solo lo ve el equipo de VIORA para ajustar la propuesta." htmlFor="amount" error={errors.budget}>
                 <input id="amount" inputMode="decimal" className={inputClass} value={budgetAmount.amount} onChange={(e) => setBudgetAmount({ ...budgetAmount, amount: e.target.value.replace(/[^\d.,]/g, "") })} placeholder="Ej.: 3000" />
               </Field>
               <Field label="Moneda" htmlFor="cur">
@@ -667,6 +719,21 @@ export function Wizard({
                 </select>
               </Field>
             </div>
+            <p className="text-sm font-semibold text-navy">¿Qué nivel de viaje buscás?</p>
+            <div className="grid gap-3 sm:grid-cols-2">
+              {BUDGET_TIER_DEFS.map((t) => (
+                <button key={t.id} type="button" aria-pressed={a.budget.tier === t.id} onClick={() => set("budget", { ...a.budget, tier: t.id })} className={cx("flex items-start gap-3 rounded-2xl border bg-white p-4 text-left", a.budget.tier === t.id ? "border-2 border-orange-brand shadow-soft" : "border-line")}>
+                  <span className="text-2xl leading-none" aria-hidden>
+                    {t.emoji}
+                  </span>
+                  <span>
+                    <span className="block font-semibold text-navy">{t.label}</span>
+                    <span className="text-sm text-muted">{t.hint}</span>
+                  </span>
+                </button>
+              ))}
+            </div>
+            <Notice>El nivel se interpreta según la región y la duración: un mismo monto rinde distinto en el Caribe, en Brasil o en Europa. Esta información es solo para orientar la propuesta.</Notice>
             <Field label="¿Qué debería incluir?">
               <div className="flex flex-wrap gap-2">
                 {(
@@ -770,11 +837,11 @@ export function Wizard({
 
         {S.key === "history" && (
           <div className="space-y-6">
-            <TagInput label="Lugares que ya visitaste" hint="Ciudades, países o regiones." values={a.history.visited} onChange={(v) => set("history", { ...a.history, visited: v })} suggestions={suggestions} />
-            <TagInput label="Los que más te gustaron" values={a.history.loved} onChange={(v) => set("history", { ...a.history, loved: v })} suggestions={a.history.visited.length ? a.history.visited : suggestions} />
-            <TagInput label="Lugares a los que no volverías" values={a.history.wouldNotReturn} onChange={(v) => set("history", { ...a.history, wouldNotReturn: v })} suggestions={suggestions} />
-            <TagInput label="Destinos pendientes que te gustaría conocer" values={a.history.pending} onChange={(v) => set("history", { ...a.history, pending: v })} suggestions={suggestions} />
-            <TagInput label="Lugares que preferís evitar" values={a.history.avoid} onChange={(v) => set("history", { ...a.history, avoid: v })} suggestions={suggestions} />
+            <TagInput label="Lugares que ya visitaste" hint="Ciudades, países o regiones." values={a.history.visited} onChange={(v) => set("history", { ...a.history, visited: v })} />
+            <TagInput label="Los que más te gustaron" values={a.history.loved} onChange={(v) => set("history", { ...a.history, loved: v })} />
+            <TagInput label="Lugares a los que no volverías" values={a.history.wouldNotReturn} onChange={(v) => set("history", { ...a.history, wouldNotReturn: v })} />
+            <TagInput label="Destinos pendientes que te gustaría conocer" values={a.history.pending} onChange={(v) => set("history", { ...a.history, pending: v })} />
+            <TagInput label="Lugares que preferís evitar" values={a.history.avoid} onChange={(v) => set("history", { ...a.history, avoid: v })} />
             <Field label="¿Qué experiencias te gustaría repetir?" htmlFor="repeat">
               <input id="repeat" className={inputClass} maxLength={400} value={a.history.repeatExperiences ?? ""} onChange={(e) => set("history", { ...a.history, repeatExperiences: e.target.value })} placeholder="Ej.: navegar, comer en mercados, hacer trekking…" />
             </Field>
@@ -874,7 +941,7 @@ export function Wizard({
               Siguiente <ArrowRight className="h-4 w-4" aria-hidden />
             </Button>
           ) : (
-            <Button onClick={submit} disabled={questions === null}>
+            <Button onClick={() => submit()} disabled={questions === null}>
               Ver mis alternativas <Sparkles className="h-4 w-4" aria-hidden />
             </Button>
           )}
@@ -884,13 +951,11 @@ export function Wizard({
   );
 }
 
-function TagInput({ label, hint, values, onChange, suggestions }: { label: string; hint?: string; values: string[]; onChange: (v: string[]) => void; suggestions: string[] }) {
-  const [text, setText] = useState("");
+function TagInput({ label, hint, values, onChange }: { label: string; hint?: string; values: string[]; onChange: (v: string[]) => void }) {
   const id = useMemo(() => `t-${label.replace(/\W/g, "").slice(0, 12)}`, [label]);
-  const add = () => {
-    const v = text.trim();
+  const add = (raw: string) => {
+    const v = raw.trim();
     if (v && !values.includes(v) && values.length < 40) onChange([...values, v]);
-    setText("");
   };
   return (
     <Field label={label} hint={hint} htmlFor={id}>
@@ -903,27 +968,20 @@ function TagInput({ label, hint, values, onChange, suggestions }: { label: strin
             </button>
           </span>
         ))}
-        <input
+        <PlaceSearch<PlaceOption>
+          tipo="lugares"
           id={id}
-          list={`${id}-list`}
-          className="min-w-40 flex-1 bg-transparent px-1 py-1.5 text-[15px] outline-none"
-          value={text}
-          maxLength={80}
-          onChange={(e) => setText(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" || e.key === ",") {
-              e.preventDefault();
-              add();
-            }
-          }}
-          onBlur={add}
-          placeholder="Escribí y presioná Enter"
+          className="min-w-40 flex-1"
+          placeholder={values.length ? "Agregá otro…" : "Empezá a escribir una ciudad o país…"}
+          keyOf={(x) => `${x.kind}:${x.label}:${x.detail ?? ""}`}
+          render={(x) => (
+            <span>
+              <b className="text-navy">{x.label}</b> <span className="text-muted">· {x.kind === "country" ? "País" : x.detail}</span>
+            </span>
+          )}
+          onPick={(x) => add(x.label)}
+          onEnterText={add}
         />
-        <datalist id={`${id}-list`}>
-          {suggestions.map((s) => (
-            <option key={s} value={s} />
-          ))}
-        </datalist>
       </div>
     </Field>
   );

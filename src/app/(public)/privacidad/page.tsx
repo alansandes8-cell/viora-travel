@@ -36,7 +36,7 @@ export default function PrivacidadPage() {
         </section>
         <section>
           <h2 className="text-xl font-semibold">Servicios de terceros</h2>
-          <p>Para mostrarte imágenes, videos y mapas usamos proveedores externos (por ejemplo, bancos de imágenes, YouTube y proveedores de mapas), que pueden recibir datos técnicos de tu navegador al cargar ese contenido. Si se habilita la asistencia de inteligencia artificial, las respuestas del cuestionario se procesan con ese proveedor para redactar la propuesta, sin datos de contacto.</p>
+          <p>Para mostrarte imágenes, videos y mapas usamos proveedores externos (por ejemplo, bancos de imágenes, YouTube y proveedores de mapas), que pueden recibir datos técnicos de tu navegador al cargar ese contenido. Si se habilita la asistencia de inteligencia artificial, las respuestas del cuestionario y los mensajes que le escribas a Viorita (nuestra asistente) se procesan con ese proveedor (por ejemplo, Google Gemini) para entender tu pedido y responderte. No le enviamos tu email ni tu WhatsApp: esos datos quedan solo en VIORA, y únicamente si aceptás que te contactemos. Evitá escribir en el chat datos sensibles como números de documento o de tarjeta.</p>
         </section>
       </div>
     </Container>

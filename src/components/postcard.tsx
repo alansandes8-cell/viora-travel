@@ -59,10 +59,11 @@ export function Postcard({ name, kind, className, label = true, title = true }: 
           </g>
         );
       })}
-      {beachy && <Beach r={r} id={id} W={W} H={H} resort={kind === "resort"} />}
-      {kind === "city" && <City r={r} W={W} H={H} />}
-      {kind === "nature" && <Nature r={r} W={W} H={H} />}
-      {kind === "themepark" && <Park r={r} W={W} H={H} />}
+      {/* Cada escena usa su propio generador con semilla: el dibujo es idéntico en servidor y navegador. */}
+      {beachy && <Beach seed={`${name}:beach`} id={id} W={W} H={H} resort={kind === "resort"} />}
+      {kind === "city" && <City seed={`${name}:city`} W={W} H={H} />}
+      {kind === "nature" && <Nature seed={`${name}:nature`} W={W} H={H} />}
+      {kind === "themepark" && <Park seed={`${name}:park`} W={W} H={H} />}
       {title && (
         <text x="28" y={H - 30} fontFamily="Fredoka, ui-rounded, system-ui, sans-serif" fontWeight="600" fontSize="44" fill="#ffffff" style={{ paintOrder: "stroke", stroke: "rgba(27,42,74,0.35)", strokeWidth: 6 }}>
           {name}
@@ -80,7 +81,7 @@ export function Postcard({ name, kind, className, label = true, title = true }: 
   );
 }
 
-type P = { r: () => number; W: number; H: number };
+type P = { seed: string; W: number; H: number };
 
 function Palm({ x, y, s, flip }: { x: number; y: number; s: number; flip: boolean }) {
   const d = flip ? -1 : 1;
@@ -94,7 +95,8 @@ function Palm({ x, y, s, flip }: { x: number; y: number; s: number; flip: boolea
   );
 }
 
-function Beach({ r, id, W, H, resort }: P & { id: string; resort: boolean }) {
+function Beach({ seed, id, W, H, resort }: P & { id: string; resort: boolean }) {
+  const r = rng(seed);
   const horizon = H * 0.56;
   return (
     <g>
@@ -116,7 +118,8 @@ function Beach({ r, id, W, H, resort }: P & { id: string; resort: boolean }) {
   );
 }
 
-function City({ r, W, H }: P) {
+function City({ seed, W, H }: P) {
+  const r = rng(seed);
   const ground = H * 0.8;
   const back: React.ReactNode[] = [];
   const front: React.ReactNode[] = [];
@@ -157,7 +160,8 @@ function City({ r, W, H }: P) {
   );
 }
 
-function Nature({ r, W, H }: P) {
+function Nature({ seed, W, H }: P) {
+  const r = rng(seed);
   const peaks = (base: number, amp: number, color: string, snow: boolean, key: string) => {
     let d = `M0 ${H}`;
     const pts: [number, number][] = [];
@@ -188,7 +192,8 @@ function Nature({ r, W, H }: P) {
   );
 }
 
-function Park({ r, W, H }: P) {
+function Park({ seed, W, H }: P) {
+  const r = rng(seed);
   const cx = W * 0.3;
   const cy = H * 0.5;
   const R = 120;

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { renderPdf, signedPrintUrl } from "@/server/pdf";
+import { relativeRedirect, renderPdf, signedPrintUrl } from "@/server/pdf";
 import { resolveShareLink } from "@/server/services/projects";
 
 export async function GET(_req: Request, ctx: RouteContext<"/p/[token]/pdf">) {
@@ -15,5 +15,5 @@ export async function GET(_req: Request, ctx: RouteContext<"/p/[token]/pdf">) {
   }
   // Alternativa funcional: versión imprimible para "Guardar como PDF" desde el navegador.
   const local = new URL(url);
-  return NextResponse.redirect(new URL(`${local.pathname}${local.search}&autoprint=1`, _req.url), 303);
+  return relativeRedirect(`${local.pathname}${local.search}&autoprint=1`);
 }

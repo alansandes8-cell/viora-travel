@@ -2,12 +2,23 @@ import { ArrowRight, Compass, Globe2, HeartHandshake, Luggage, Map, Plane, Spark
 import { TRIP_STYLE_DEFS } from "@/core/catalog";
 import { SmartImage } from "@/components/media/smart-image";
 import { InstallBanner } from "@/components/pwa/pwa";
-import { ACCENTS, ButtonLink, Card, Container, Logo, SectionTitle, cx } from "@/components/ui";
+import { ACCENTS, ButtonLink, Card, Container, SectionTitle, cx } from "@/components/ui";
+import { Postcard } from "@/components/postcard";
 import { imagesFor } from "@/server/media-helpers";
+import { HERO_SPOTS } from "@/server/media-warmup";
 
 export const dynamic = "force-dynamic";
 
 const FEATURED = ["beach_relax", "eurotrip", "theme_parks", "honeymoon", "nature_adventure", "big_cities", "family", "discover"] as const;
+
+const STYLE_KIND: Record<string, "beach" | "city" | "nature" | "themepark" | "island"> = {
+  beach_relax: "beach",
+  honeymoon: "island",
+  nature_adventure: "nature",
+  theme_parks: "themepark",
+  family: "themepark",
+  discover: "nature",
+};
 
 const SERVICES = [
   { icon: Luggage, label: "Paquetes personalizados", accent: "purple" as const },
@@ -19,7 +30,9 @@ const SERVICES = [
 
 export default async function HomePage() {
   const styles = TRIP_STYLE_DEFS.filter((s) => (FEATURED as readonly string[]).includes(s.id));
-  const [hero, ...tiles] = await Promise.all([imagesFor("Baía do Sancho", 1), ...styles.map((s) => imagesFor(s.imageQuery, 1))]);
+  const [heroOptions, tiles] = await Promise.all([Promise.all(HERO_SPOTS.map((q) => imagesFor(q, 1))), Promise.all(styles.map((s) => imagesFor(s.imageQuery, 1)))]);
+  const heroIndex = heroOptions.findIndex((h) => h.length > 0);
+  const hero = heroIndex >= 0 ? heroOptions[heroIndex] : [];
 
   return (
     <>
@@ -50,14 +63,10 @@ export default async function HomePage() {
           <div className="relative">
             <SmartImage
               image={hero[0]}
-              alt="Playa de agua turquesa (Baía do Sancho, Fernando de Noronha)"
+              alt={heroIndex >= 0 ? `Foto de ${HERO_SPOTS[heroIndex]}` : "Ilustración de una playa"}
               eager
               className="aspect-[4/5] w-full rounded-[2rem] shadow-lift sm:aspect-[5/4] lg:aspect-[4/5]"
-              fallback={
-                <div className="flex h-full w-full items-center justify-center bg-white">
-                  <Logo size={380} className="w-3/4 max-w-sm" />
-                </div>
-              }
+              fallback={<Postcard name="Fernando de Noronha" kind="beach" className="h-full w-full" title={false} />}
             />
             <Card className="absolute -bottom-5 left-4 right-4 flex items-center gap-3 p-4 sm:left-auto sm:right-6 sm:w-72">
               <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-coral-brand/12 text-coral-brand">
@@ -96,7 +105,7 @@ export default async function HomePage() {
                   thumb
                   showCredit={false}
                   className="aspect-[4/5] w-full transition-transform duration-500 group-hover:scale-[1.03]"
-                  fallback={<div className={cx("h-full w-full", ACCENTS[s.accent].bg)} />}
+                  fallback={<Postcard name={s.imageQuery} kind={STYLE_KIND[s.id] ?? "city"} className="h-full w-full" title={false} />}
                 />
                 <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-navy/80 via-navy/10 to-transparent" />
                 <div className="absolute inset-x-0 bottom-0 p-3 sm:p-4">

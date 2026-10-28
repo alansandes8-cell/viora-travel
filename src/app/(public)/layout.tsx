@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { MessageCircle } from "lucide-react";
 import { Container, Logo } from "@/components/ui";
+import { Viorita } from "@/components/viorita/viorita";
 import { agency } from "@/server/settings";
 import { whatsappLink } from "@/server/integrations/notify";
 
@@ -27,6 +28,7 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
         </Container>
       </header>
       <main className="flex-1">{children}</main>
+      <Viorita />
       <footer className="mt-20 border-t border-line bg-white no-print">
         <Container className="grid gap-8 py-10 text-sm text-muted sm:grid-cols-3">
           <div className="space-y-3">

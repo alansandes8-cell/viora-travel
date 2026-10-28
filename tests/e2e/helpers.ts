@@ -24,3 +24,14 @@ export async function completeBeachIntake(page: Page) {
 
 /** Patrón de importes visibles: no debe aparecer en vistas del cliente. */
 export const MONEY_VISIBLE = /(US\$|U\$S|USD|ARS|EUR|€)\s?\d|\$\s?\d{2,}|4321|4\.321/;
+
+/** Texto visible de la página SIN la tarjeta de gastos diarios orientativos (única excepción pedida por la agencia). */
+export async function textWithoutDailySpend(page: Page): Promise<string> {
+  return page.evaluate(() => {
+    const cards = [...document.querySelectorAll<HTMLElement>("[data-daily-spend]")];
+    cards.forEach((n) => (n.style.display = "none"));
+    const text = document.body.innerText;
+    cards.forEach((n) => (n.style.display = ""));
+    return text;
+  });
+}

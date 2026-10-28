@@ -99,3 +99,47 @@ export async function purgeExpired() {
   await logActivity("retention.purge", { actorKind: "staff", actorId: staff.id, details: { drafts: deleted.length } });
   revalidatePath("/admin/ajustes");
 }
+
+/** Vuelve a buscar las fotos de todos los lugares emblemáticos y guarda el resultado para mostrarlo. */
+export async function refreshPhotos() {
+  const staff = await requireStaff();
+  const { warmPhotos } = await import("@/server/media-warmup");
+  const r = await warmPhotos({ force: true });
+  await setSetting("last_photo_refresh", { ...r, at: new Date().toISOString() });
+  await logActivity("media.refresh", { actorKind: "staff", actorId: staff.id, details: { found: r.found, titles: r.titles, error: r.error } });
+  revalidatePath("/admin/ajustes");
+}
+
+/** Tabla de gastos diarios orientativos (por persona y día, sin alojamiento ni vuelos). */
+export async function saveDailySpend(fd: FormData) {
+  const staff = await requireStaff("owner");
+  const { DEFAULT_DAILY_SPEND } = await import("@/core/daily-spend");
+  const cell = (k: string, def: number) => {
+    const v = Number(fd.get(k));
+    return Number.isFinite(v) && v > 0 && v < 2000 ? Math.round(v) : def;
+  };
+  const table = {
+    USD: DEFAULT_DAILY_SPEND.USD.map(([l, h], i) => [cell(`USD-${i}-l`, l), cell(`USD-${i}-h`, h)] as [number, number]),
+    EUR: DEFAULT_DAILY_SPEND.EUR.map(([l, h], i) => [cell(`EUR-${i}-l`, l), cell(`EUR-${i}-h`, h)] as [number, number]),
+    tierFactor: DEFAULT_DAILY_SPEND.tierFactor,
+  };
+  await setSetting("daily_spend", table);
+  await logActivity("settings.daily_spend", { actorKind: "staff", actorId: staff.id, details: table });
+  revalidatePath("/admin/ajustes");
+}
+
+/** Prueba la generación de PDF con una página interna y guarda el resultado (o el error exacto). */
+export async function testPdf() {
+  await requireStaff();
+  const { renderPdf } = await import("@/server/pdf");
+  const base = (process.env.INTERNAL_APP_URL ?? `http://127.0.0.1:${process.env.PORT ?? 3000}`).replace(/\/$/, "");
+  let result: { ok: boolean; detail: string; at: string };
+  try {
+    const pdf = await renderPdf(`${base}/privacidad`);
+    result = { ok: !!pdf, detail: pdf ? `PDF generado (${Math.round(pdf.length / 1024)} KB)` : "No se encontró Chromium", at: new Date().toISOString() };
+  } catch (e) {
+    result = { ok: false, detail: ((e as Error).message ?? String(e)).slice(0, 600), at: new Date().toISOString() };
+  }
+  await setSetting("last_pdf_test", result);
+  revalidatePath("/admin/ajustes");
+}

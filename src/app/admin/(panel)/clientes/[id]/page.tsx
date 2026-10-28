@@ -14,6 +14,7 @@ export default async function ClientePage({ params }: PageProps<"/admin/clientes
   const c = await db().query.clients.findFirst({ where: eq(schema.clients.id, id) });
   if (!c) notFound();
   const projects = await db().select().from(schema.tripProjects).where(eq(schema.tripProjects.clientId, id)).orderBy(desc(schema.tripProjects.createdAt));
+  const chats = await db().select().from(schema.chatConversations).where(eq(schema.chatConversations.clientId, id)).orderBy(desc(schema.chatConversations.createdAt));
   return (
     <>
       <PageHeader title={c.anonymizedAt ? "Cliente anonimizado" : c.name ?? "Cliente"} subtitle={`Alta ${fmtDateTime(c.createdAt)} · origen: ${c.source}`} />
@@ -45,6 +46,23 @@ export default async function ClientePage({ params }: PageProps<"/admin/clientes
           </ul>
           <p className="mt-3 text-xs text-muted">Las preferencias de viajes anteriores pueden reutilizarse para nuevas propuestas con autorización del cliente.</p>
         </Panel>
+        {chats.length > 0 && (
+          <Panel title="Conversación con Viorita" className="lg:col-span-2">
+            {chats.map((ch) => (
+              <div key={ch.id} className="space-y-2 text-sm">
+                <p className="text-xs text-muted">
+                  Iniciada {fmtDateTime(ch.createdAt)}
+                  {ch.page ? ` · desde ${ch.page}` : ""}
+                </p>
+                {ch.messages.map((m, i) => (
+                  <p key={i} className={m.role === "user" ? "rounded-xl bg-teal-brand/10 p-2" : "rounded-xl bg-sand p-2"}>
+                    <b>{m.role === "user" ? "Cliente" : "Viorita"}:</b> {m.content}
+                  </p>
+                ))}
+              </div>
+            ))}
+          </Panel>
+        )}
       </div>
     </>
   );

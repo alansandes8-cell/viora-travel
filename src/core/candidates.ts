@@ -18,6 +18,8 @@ export function tripNights(profile: TravelerProfile): number {
 }
 
 function allowedByWish(dests: Destination[], profile: TravelerProfile): boolean {
+  const countries = profile.wishCountries ?? [];
+  if (countries.length) return dests.every((d) => countries.includes(d.countryCode) || profile.wishIds.includes(d.id));
   if (!profile.wishIds.length && !profile.wishRegions.length) return true;
   if (dests.some((d) => profile.wishIds.includes(d.id))) return true;
   if (profile.wishRegions.length && dests.every((d) => profile.wishRegions.includes(SUPER_REGION[d.cluster]))) return true;
@@ -86,6 +88,8 @@ function primaries(cs: Candidate[]): number {
 }
 
 function buildCandidates(profile: TravelerProfile, pool: Destination[], stretch = 1): Candidate[] {
+  const countries = profile.wishCountries ?? [];
+  if (countries.length) pool = pool.filter((d) => countries.includes(d.countryCode) || profile.wishIds.includes(d.id));
   const nights = tripNights(profile);
   const aff = new Map(pool.map((d) => [d.id, affinityOf(d, profile)]));
   const out: Candidate[] = [];
@@ -178,6 +182,17 @@ function buildCandidates(profile: TravelerProfile, pool: Destination[], stretch 
         const kept = ordered.filter((d) => alloc.kept.includes(d.id));
         if (kept.length < 2) continue;
         push({ key: "", kind: "route", stops: kept.map((d, i) => ({ dest: d, nights: alloc.nights[i] })), notes: alloc.notes });
+        // Variantes: la misma ruta sin una de sus paradas (da alternativas distintas cuando hay pocas ciudades posibles).
+        if (kept.length >= 3) {
+          for (const drop of kept) {
+            if (drop === seed) continue;
+            const rest = kept.filter((d) => d !== drop);
+            if (!allowedByWish(rest, profile)) continue;
+            const a2 = allocateNights(rest.map((d) => ({ dest: d, weight: aff.get(d.id) ?? 5 })), nights, profile.pace);
+            const k2 = rest.filter((d) => a2.kept.includes(d.id));
+            if (k2.length >= 2) push({ key: "", kind: "route", stops: k2.map((d, i) => ({ dest: d, nights: a2.nights[i] })), notes: a2.notes });
+          }
+        }
       }
     }
   }

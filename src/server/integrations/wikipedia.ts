@@ -35,7 +35,7 @@ function stripHtml(s?: string): string | null {
   return s.replace(/<[^>]*>/g, "").replace(/\s+/g, " ").trim().slice(0, 200) || null;
 }
 
-const norm = (s: string) => s.replace(/_/g, " ").replace(/^File:/i, "").trim().toLowerCase();
+const norm = (s: string) => s.normalize("NFC").replace(/_/g, " ").replace(/^File:/i, "").trim().toLowerCase();
 
 /** Nombres de archivo de la imagen principal: primero por título exacto; si no hay, por búsqueda. */
 async function leadImageFiles(query: string, fetchJson: FetchJson): Promise<string[]> {
@@ -57,32 +57,75 @@ export async function wikipediaImages(query: string, count: number, fetchJson: F
   const externalIds: string[] = [];
   for (const f of files) {
     const p = pages.find((x) => norm(x.title ?? "") === norm(f));
-    const ii = p?.imageinfo?.[0];
-    if (!ii) continue;
-    const meta = ii.extmetadata ?? {};
-    const license = meta.LicenseShortName?.value as string | undefined;
-    if (!license || !FREE_LICENSE.test(license)) continue;
-    const w = ii.width ?? 0;
-    const h = ii.height ?? 0;
-    if (w < 1000 || w < h * 1.05) continue; // solo horizontales y nítidas
-    const author = stripHtml(meta.Artist?.value);
+    const img = p?.imageinfo?.[0] ? toImage(p.imageinfo[0], query) : null;
+    if (!img) continue;
     externalIds.push(`wp:${norm(f)}`);
-    items.push({
-      provider: "wikipedia",
-      kind: "image",
-      url: ii.thumburl ?? ii.url,
-      thumbUrl: ii.thumburl ?? null,
-      width: ii.thumbwidth ?? w,
-      height: ii.thumbheight ?? h,
-      title: query,
-      author,
-      authorUrl: null,
-      sourceUrl: ii.descriptionurl ?? null,
-      license,
-      attribution: `${author ?? "Autor desconocido"} — ${license}, vía Wikipedia`,
-      aiGenerated: false,
-    });
+    items.push(img);
     if (items.length >= count) break;
   }
   return { items, externalIds };
+}
+
+const chunk = <T,>(xs: T[], n: number) => Array.from({ length: Math.ceil(xs.length / n) }, (_, i) => xs.slice(i * n, i * n + n));
+
+/**
+ * Versión agrupada: la imagen principal de muchos artículos con pocas consultas
+ * (hasta 50 títulos por consulta). Es la forma recomendada de usar la API de Wikipedia
+ * y evita los límites que se aplican a muchas consultas sueltas en paralelo.
+ * Devuelve, por cada título pedido, 0 o 1 foto apta.
+ */
+export async function wikipediaLeadImages(titles: string[], fetchJson: FetchJson): Promise<Map<string, WikiImage[]>> {
+  const out = new Map<string, WikiImage[]>(titles.map((t) => [t, []]));
+  const fileOf = new Map<string, string>(); // título pedido → archivo
+  for (const group of chunk(titles, 50)) {
+    const res = await fetchJson(`${API}&redirects=1&prop=pageimages&piprop=name&pilimit=50&titles=${encodeURIComponent(group.join("|"))}`);
+    const q = res?.query ?? {};
+    const follow = new Map<string, string>();
+    for (const n of [...(q.normalized ?? []), ...(q.redirects ?? [])] as { from: string; to: string }[]) follow.set(n.from, n.to);
+    const pages = (q.pages ?? []) as any[];
+    for (const t of group) {
+      let final = t;
+      for (let i = 0; i < 3 && follow.has(final); i++) final = follow.get(final)!;
+      const page = pages.find((p) => p.title === final);
+      const file = page?.pageimage as string | undefined;
+      if (file && /\.(jpe?g|webp)$/i.test(file) && !NOT_A_PHOTO.test(file)) fileOf.set(t, file);
+    }
+  }
+  const files = [...new Set(fileOf.values())];
+  const info = new Map<string, any>();
+  for (const group of chunk(files, 50)) {
+    const res = await fetchJson(`${API}&prop=imageinfo&iiprop=url|size|extmetadata&iiurlwidth=1600&titles=${encodeURIComponent(group.map((f) => `File:${f}`).join("|"))}`);
+    for (const p of (res?.query?.pages ?? []) as any[]) if (p.imageinfo?.[0]) info.set(norm(p.title ?? ""), p.imageinfo[0]);
+  }
+  for (const [t, f] of fileOf) {
+    const ii = info.get(norm(f));
+    const img = ii ? toImage(ii, t) : null;
+    if (img) out.set(t, [img]);
+  }
+  return out;
+}
+
+function toImage(ii: any, title: string): WikiImage | null {
+  const meta = ii.extmetadata ?? {};
+  const license = meta.LicenseShortName?.value as string | undefined;
+  if (!license || !FREE_LICENSE.test(license)) return null;
+  const w = ii.width ?? 0;
+  const h = ii.height ?? 0;
+  if (w < 1000 || w < h * 1.05) return null;
+  const author = stripHtml(meta.Artist?.value);
+  return {
+    provider: "wikipedia",
+    kind: "image",
+    url: ii.thumburl ?? ii.url,
+    thumbUrl: ii.thumburl ?? null,
+    width: ii.thumbwidth ?? w,
+    height: ii.thumbheight ?? h,
+    title,
+    author,
+    authorUrl: null,
+    sourceUrl: ii.descriptionurl ?? null,
+    license,
+    attribution: `${author ?? "Autor desconocido"} — ${license}, vía Wikipedia`,
+    aiGenerated: false,
+  };
 }

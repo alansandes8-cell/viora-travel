@@ -48,13 +48,16 @@ body {
   text-rendering: optimizeLegibility;
 }
 
-h1,
-h2,
-h3,
-.font-display {
-  font-family: var(--font-display);
-  color: var(--color-navy);
-  letter-spacing: -0.01em;
+/* En la capa base para que las utilidades (p. ej. text-white) puedan cambiar el color. */
+@layer base {
+  h1,
+  h2,
+  h3,
+  .font-display {
+    font-family: var(--font-display);
+    color: var(--color-navy);
+    letter-spacing: -0.01em;
+  }
 }
 
 :focus-visible {

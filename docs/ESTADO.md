@@ -39,6 +39,16 @@ Fecha: 26/10/2026. Este documento separa lo que **funciona y fue probado**, lo q
 - Progreso como pasaporte con sellos, tarjeta «Tu perfil viajero» y confeti al ver la propuesta (se desactiva con «reducir movimiento»).
 - Fotos: en la plataforma salen de Unsplash/Pexels/Wikimedia si hay claves; si no hay foto, se muestra una postal ilustrada del destino rotulada «Ilustración». La vista previa usa solo ilustraciones.
 
+### Tercera ronda de ajustes de la agencia
+
+- **Fotos**: la causa probable de las fotos faltantes era el límite de Wikipedia para consultas sin identificación de contacto y en ráfaga, con el error recordado 14 h. Ahora: identificación con el sitio, como máximo 2 consultas a la vez, precarga agrupada al iniciar el servidor (≈ 8 consultas para ~185 lugares) y reintento de errores a los 10 min. Panel → Ajustes → «Fotos de destinos» muestra cuántas hay y permite volver a buscarlas. **No verificado en vivo** (el entorno de desarrollo no accede a Wikipedia).
+- **Texto libre**: entiende países («21 días en Italia»), recorridos de varias ciudades, meses, con quién viaja y experiencias (trekking, buceo, vinos, esquí…), y ofrece «Ver mis propuestas ahora». Con `GEMINI_API_KEY` (gratis) lo interpreta la IA; sin clave, reglas. Se agregaron Cinque Terre, Milán y Lago de Como, y Sicilia.
+- **Cuestionario**: pasos clicables, regreso sugerido al elegir la salida, presupuesto en monto primero, buscador mundial de aeropuertos (OurAirports, dominio público) y de ciudades/países.
+- **Itinerario**: gastos diarios orientativos por persona (comidas, transporte local y entradas; tabla editable en Ajustes) — única excepción a «sin importes», pedida por la agencia; fotos de las zonas para alojarse y enlace a Google Maps (sin recomendar hoteles); enlaces a YouTube por ciudad.
+- **PDF**: funciona en las pruebas locales (e2e descarga un PDF real). Para el servidor se ajustaron opciones de Chromium y la redirección de respaldo; Ajustes → «Prueba de PDF» muestra el error exacto si algo falla.
+- **Viorita-bot**: asistente abajo a la derecha; toma nombre, email y WhatsApp con consentimiento, responde con IA gratuita (Gemini o Groq) o deriva a un asesor sin IA; los contactos y la conversación aparecen en el panel.
+- Pruebas: 58 unitarias y 16 e2e pasan (el e2e del panel requiere credenciales locales).
+
 ### Segunda ronda de ajustes de la agencia
 
 - Logo nuevo (horizontal, fondo transparente) e íconos de la app con fondo azul.
@@ -72,7 +82,7 @@ Fecha: 26/10/2026. Este documento separa lo que **funciona y fue probado**, lo q
 
 Entorno: Node 22, PostgreSQL 16 local, Chromium 1243. Resultados reales de esta sesión.
 
-**Unitarias y de escenarios** (`pnpm test`, Vitest): **53 pruebas pasan, 0 fallan** (3 de integración con la base se omiten si no hay base configurada).
+**Unitarias y de escenarios** (`pnpm test`, Vitest): **58 pruebas pasan, 0 fallan** (3 de integración con la base se omiten si no hay base configurada).
 
 | Escenario del pedido | Prueba | Resultado |
 |---|---|---|

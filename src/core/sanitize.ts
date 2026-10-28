@@ -65,6 +65,12 @@ export interface ClientProposal {
   entryRequirements: { country: string; links: { label: string; url: string }[] }[];
   nextSteps: string[];
   disclaimer: string;
+  /**
+   * Única excepción a «sin importes»: gastos diarios orientativos por persona (comidas, transporte
+   * local y entradas), por pedido de la agencia. Son números de referencia, no una cotización:
+   * nunca incluyen alojamiento, vuelos, márgenes ni el presupuesto que indicó el cliente.
+   */
+  dailySpend: { name: string; nights: number; low: number; high: number; currency: "USD" | "EUR" }[];
 }
 
 const MONEY_PATTERNS: RegExp[] = [
@@ -207,6 +213,9 @@ export function toClientProposal(doc: PlanDocument, status: ClientProposal["stat
       "Pedile a VIORA TRAVEL una propuesta personalizada: un asesor revisa la ruta, verifica vuelos, alojamientos y disponibilidad.",
       "Con las fechas confirmadas, preparamos la cotización real y te acompañamos en las reservas.",
     ],
+    dailySpend: (doc.dailySpend ?? [])
+      .filter((d) => Number.isFinite(d.low) && Number.isFinite(d.high) && d.low > 0 && d.high < 2000 && (d.currency === "USD" || d.currency === "EUR"))
+      .map((d) => ({ name: d.name, nights: d.nights, low: Math.round(d.low), high: Math.round(d.high), currency: d.currency })),
     disclaimer:
       "Propuesta orientativa generada a partir de tus respuestas. Los puntajes son recomendaciones del sistema, no garantías. El clima indicado es el habitual de la época, no un pronóstico. Horarios, disponibilidad y requisitos de viaje deben confirmarse antes de reservar.",
   };

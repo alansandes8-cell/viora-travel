@@ -1,4 +1,5 @@
 import { BASE_WEIGHTS, BUDGET_TIER_DEFS, INTEREST_LABELS, MONTHS_ES, PRIORITY_BY_ID } from "./catalog";
+import { destinationOffers } from "./experiences";
 import { estimateLongHaulHours, haversineKm } from "./geo";
 import type { Criterion, CriterionScore, Destination, Interest, TravelerProfile } from "./types";
 import { CRITERIA, CRITERIA_LABELS } from "./types";
@@ -165,6 +166,11 @@ export function affinityOf(dest: Destination, profile: TravelerProfile): number 
   }
   let s = (num / den) * 10;
   if (profile.wishIds.includes(dest.id)) s += 2.5;
+  const wanted = profile.experiences ?? [];
+  if (wanted.length) {
+    const offered = destinationOffers(dest, wanted);
+    s += offered ? 2 + offered : -3; // pidió algo concreto: que el destino realmente lo ofrezca
+  }
   if (dest.beach && (profile.interests.beach ?? 0) >= 0.5) {
     if (profile.beachPrefs.clearWater) s += (dest.beach.clarity - 2) * 1.8;
     if (profile.beachPrefs.calmSea) s += (dest.beach.calm - 2) * 0.8;

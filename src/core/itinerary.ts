@@ -1,4 +1,5 @@
 import { LODGING_LABELS, MONTHS_ES } from "./catalog";
+import { activityOffers } from "./experiences";
 import { estimateLeg } from "./geo";
 import { addDays } from "./profile";
 import type {
@@ -32,6 +33,7 @@ function activityScore(a: LibraryActivity, profile: TravelerProfile, month: numb
   if (a.tags.includes("iconic") && profile.firstTimeEurope) s += 0.5;
   if (profile.kids.length && a.kidsOk) s += 0.6;
   if (profile.pace === "relaxed" && a.effort === 3) s -= 0.8;
+  s += activityOffers(a, profile.experiences ?? []) * 3;
   return s;
 }
 

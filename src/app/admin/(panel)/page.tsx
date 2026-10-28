@@ -101,6 +101,28 @@ export default async function DashboardPage() {
           </ul>
         </Panel>
       </div>
+      <Panel title="Contactos de Viorita (asistente de la web)" className="mt-6">
+        {s.chats.length ? (
+          <ul className="divide-y divide-line text-sm">
+            {s.chats.map(({ c, client }) => (
+              <li key={c.id} className="flex flex-wrap items-center justify-between gap-2 py-2">
+                {client ? (
+                  <Link href={`/admin/clientes/${client.id}`} className="font-semibold text-navy hover:underline">
+                    {client.name ?? "Anonimizado"}
+                  </Link>
+                ) : (
+                  <span>—</span>
+                )}
+                <span className="text-muted">{[client?.phone, client?.email].filter(Boolean).join(" · ")}</span>
+                <span className="w-full truncate text-muted sm:w-auto sm:max-w-md">«{c.messages.find((m) => m.role === "user")?.content}»</span>
+                <span className="text-xs text-muted">{fmtDateTime(c.updatedAt)}</span>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="text-sm text-muted">Todavía no hay contactos. Cuando alguien chatee con Viorita, aparece acá con su nombre, email y WhatsApp.</p>
+        )}
+      </Panel>
       <Panel title="App para clientes" className="mt-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
           <div className="w-32 shrink-0 rounded-xl border border-line p-2" role="img" aria-label="Código QR de la app" dangerouslySetInnerHTML={{ __html: qr }} />

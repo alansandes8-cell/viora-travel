@@ -162,7 +162,7 @@ export function InstallBanner() {
     } catch {}
   };
   return (
-    <div className="no-print fixed inset-x-3 bottom-3 z-40 flex items-center gap-3 rounded-2xl border border-line bg-white p-3 shadow-soft sm:hidden">
+    <div className="no-print fixed bottom-3 left-3 right-20 z-40 flex items-center gap-3 rounded-2xl border border-line bg-white p-3 shadow-soft sm:hidden">
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img src="/icons/icon-192.png" alt="" width={44} height={44} className="rounded-xl" />
       <p className="flex-1 text-sm leading-tight">

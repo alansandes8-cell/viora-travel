@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { wikipediaImages } from "@/server/integrations/wikipedia";
+import { wikipediaImages, wikipediaLeadImages } from "@/server/integrations/wikipedia";
 
 const info = (title: string, w: number, h: number, license = "CC BY-SA 4.0") => ({
   title: `File:${title}`,
@@ -42,5 +42,31 @@ describe("Fotos de Wikipedia (lugares emblemáticos)", () => {
   it("sin imagen apta devuelve vacío (se muestra la postal ilustrada)", async () => {
     const { fetchJson } = fake({ byTitle: { query: { pages: [{ title: "X", missing: true }] } }, search: { query: { pages: [] } } });
     expect((await wikipediaImages("Lugar inexistente", 2, fetchJson)).items).toEqual([]);
+  });
+});
+
+describe("Fotos agrupadas (precarga)", () => {
+  it("sigue redirecciones y normalizaciones y hace 2 consultas para muchos títulos", async () => {
+    const calls: string[] = [];
+    const fetchJson = async (url: string) => {
+      calls.push(url);
+      if (url.includes("prop=imageinfo")) return { query: { pages: [info("Colosseo 2020.jpg", 4000, 2600), info("Fitz Roy dawn.jpg", 3000, 2000)] } };
+      return {
+        query: {
+          normalized: [{ from: "fitz Roy", to: "Fitz Roy" }],
+          redirects: [{ from: "Fitz Roy", to: "Monte Fitz Roy" }],
+          pages: [
+            { title: "Colosseum", pageimage: "Colosseo_2020.jpg" },
+            { title: "Monte Fitz Roy", pageimage: "Fitz_Roy_dawn.jpg" },
+            { title: "Nada", missing: true },
+          ],
+        },
+      };
+    };
+    const map = await wikipediaLeadImages(["Colosseum", "fitz Roy", "Nada"], fetchJson);
+    expect(calls).toHaveLength(2);
+    expect(map.get("Colosseum")![0].url).toContain("Colosseo");
+    expect(map.get("fitz Roy")![0].url).toContain("Fitz Roy");
+    expect(map.get("Nada")).toEqual([]);
   });
 });

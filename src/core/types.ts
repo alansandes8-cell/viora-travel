@@ -152,6 +152,9 @@ export interface IntakeAnswers {
     city: string;
     country: string;
     airport?: string;
+    /** Coordenadas del aeropuerto elegido en el buscador (para estimar tiempos de vuelo). */
+    lat?: number;
+    lng?: number;
     altAirportOk?: boolean;
     flightPref?: "direct" | "few_stops" | "any";
     longLayoverOk?: boolean;
@@ -305,6 +308,10 @@ export interface TravelerProfile {
   originAirports: string[];
   wishIds: string[]; // destinos mencionados o pendientes
   wishRegions: string[]; // superregiones deseadas
+  /** Países pedidos explícitamente («21 días en Italia»): las alternativas se limitan a ellos. */
+  wishCountries?: string[];
+  /** Experiencias concretas pedidas (trekking, buceo, vinos…): ver core/experiences. */
+  experiences?: string[];
   effortCap: 1 | 2 | 3;
   includeKnown: boolean;
   preferFlightsOverLongTrains: boolean;
@@ -499,6 +506,8 @@ export interface PlanDocument {
   } | null;
   recommendations: string[];
   checks: ValidationIssue[];
+  /** Gastos diarios orientativos por parada (referencia de la agencia, sin alojamiento ni vuelos). */
+  dailySpend?: { stopId: string; name: string; nights: number; low: number; high: number; currency: "USD" | "EUR" }[];
   pendingInfo: string[];
   entryRequirements: { country: string; items: Claim<string>[]; links: { label: string; url: string }[] }[];
 }

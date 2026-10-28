@@ -12,14 +12,16 @@ import { mediaStatus } from "@/server/integrations/media";
 import { emailConfigured } from "@/server/integrations/notify";
 import { chromiumPath } from "@/server/pdf";
 import { getSetting } from "@/server/settings";
-import { confirmTotp, createUser, purgeExpired, renameStatus, saveGeneral, saveWeights, startTotp, toggleUser } from "./actions";
+import { llmConfigured, llmProvider } from "@/server/ai/llm";
+import { DEFAULT_DAILY_SPEND, type DailySpendTable } from "@/core/daily-spend";
+import { confirmTotp, createUser, purgeExpired, refreshPhotos, saveDailySpend, testPdf, renameStatus, saveGeneral, saveWeights, startTotp, toggleUser } from "./actions";
 
 export const metadata = { title: "Ajustes" };
 
 export default async function AjustesPage() {
   const staff = await requireStaff();
   const owner = staff.role === "owner";
-  const [weights, shareDays, retention, aiLimit, genLimit, statuses, users, pending] = await Promise.all([
+  const [weights, shareDays, retention, aiLimit, genLimit, statuses, users, pending, photoRun, photoCount] = await Promise.all([
     getSetting<Record<Criterion, number>>("scoring_weights", BASE_WEIGHTS),
     getSetting<number>("share_link_days", 90),
     getSetting<number>("draft_retention_days", 90),
@@ -28,9 +30,24 @@ export default async function AjustesPage() {
     db().select().from(schema.projectStatuses).orderBy(asc(schema.projectStatuses.sort)),
     db().select().from(schema.staffUsers).orderBy(asc(schema.staffUsers.createdAt)),
     db().query.settings.findFirst({ where: eq(schema.settings.key, `pending_totp:${staff.id}`) }),
+    getSetting<{ titles: number; found: number; missing: string[]; error?: string; at: string } | null>("last_photo_refresh", null),
+    db()
+      .select({ ok: schema.mediaQueries.status })
+      .from(schema.mediaQueries)
+      .where(eq(schema.mediaQueries.provider, "wikipedia")),
   ]);
+  const spend = await getSetting<DailySpendTable>("daily_spend", DEFAULT_DAILY_SPEND);
+  const pdfTest = await getSetting<{ ok: boolean; detail: string; at: string } | null>("last_pdf_test", null);
+  const photosOk = photoCount.filter((r) => r.ok === "ok").length;
+  const photosFail = photoCount.filter((r) => r.ok !== "ok").length;
+  const llm = llmProvider();
   const integrations = [
-    { name: "Inteligencia artificial (Claude)", ok: aiConfigured(), detail: aiConfigured() ? `Modelo ${aiModel()}` : "Sin ANTHROPIC_API_KEY: se usa el motor determinista. Textos y pedidos libres con menos personalización." },
+    {
+      name: "IA para Viorita-bot y texto libre",
+      ok: llmConfigured(),
+      detail: llm ? `${llm.name === "gemini" ? "Google Gemini (plan gratuito)" : llm.name === "groq" ? "Groq (plan gratuito)" : "Claude"} · modelo ${llm.model}` : "Sin GEMINI_API_KEY ni GROQ_API_KEY: Viorita toma los datos y deriva a un asesor; el texto libre se interpreta con reglas.",
+    },
+    { name: "IA para redactar propuestas (Claude)", ok: aiConfigured(), detail: aiConfigured() ? `Modelo ${aiModel()}` : "Opcional y pago (ANTHROPIC_API_KEY). Sin ella se usan los textos del motor." },
     { name: "Email de avisos (SMTP)", ok: emailConfigured(), detail: emailConfigured() ? "Configurado" : "Sin SMTP: las solicitudes quedan registradas en el panel y no se informa como enviado ningún email." },
     ...mediaStatus().map((m) => ({ name: `${m.kind === "image" ? "Imágenes" : "Videos"}: ${m.name}`, ok: m.configured, detail: m.configured ? "Configurado" : "Sin credencial" })),
     { name: "Mapa interactivo", ok: process.env.NEXT_PUBLIC_MAP_STYLE_URL !== "none", detail: process.env.NEXT_PUBLIC_MAP_STYLE_URL || "OpenFreeMap (por defecto). Si falla, se muestra el mapa esquemático." },
@@ -56,6 +73,64 @@ export default async function AjustesPage() {
               </li>
             ))}
           </ul>
+        </Panel>
+        <Panel title="Fotos de destinos" className="xl:col-span-2">
+          <p className="text-sm">
+            Lugares emblemáticos con foto en caché: <strong>{photosOk}</strong>
+            {photosFail ? <span className="text-muted"> · sin foto o con error: {photosFail}</span> : null}. Se buscan solas al iniciar el servidor y una vez por semana.
+          </p>
+          {photoRun && (
+            <p className="mt-1 text-xs text-muted">
+              Última búsqueda manual: {new Date(photoRun.at).toLocaleString("es-AR")} · {photoRun.found}/{photoRun.titles} con foto
+              {photoRun.error ? ` · error: ${photoRun.error}` : ""}
+              {photoRun.missing?.length ? ` · sin foto: ${photoRun.missing.slice(0, 12).join(", ")}${photoRun.missing.length > 12 ? "…" : ""}` : ""}
+            </p>
+          )}
+          <form action={refreshPhotos} className="mt-3">
+            <button className={smallBtn}>Volver a buscar fotos ahora</button>
+          </form>
+        </Panel>
+        <Panel title="Prueba de PDF">
+          <p className="text-sm text-muted">Genera un PDF de prueba en el servidor. Si falla, acá aparece el error exacto para corregirlo.</p>
+          {pdfTest && (
+            <p className={`mt-2 rounded-xl p-2 text-sm ${pdfTest.ok ? "bg-success/10 text-success" : "bg-danger/10 text-danger"}`}>
+              {new Date(pdfTest.at).toLocaleString("es-AR")}: {pdfTest.detail}
+            </p>
+          )}
+          <form action={testPdf} className="mt-3">
+            <button className={smallBtn}>Probar PDF ahora</button>
+          </form>
+        </Panel>
+        <Panel title="Gastos diarios orientativos (se muestran al cliente)">
+          <p className="text-sm text-muted">Por persona y por día: comidas, transporte local y entradas (sin alojamiento ni vuelos). Según el nivel de costo de cada destino; luego se ajusta por el nivel de viaje elegido. Europa en euros, el resto en dólares.</p>
+          <form action={saveDailySpend} className="mt-3 overflow-x-auto">
+            <table className="text-sm">
+              <thead>
+                <tr className="text-left text-xs text-muted">
+                  <th className="pr-3">Nivel de costo</th>
+                  <th className="pr-3">US$ mín.</th>
+                  <th className="pr-3">US$ máx.</th>
+                  <th className="pr-3">€ mín.</th>
+                  <th>€ máx.</th>
+                </tr>
+              </thead>
+              <tbody>
+                {[0, 1, 2, 3, 4].map((i) => (
+                  <tr key={i}>
+                    <td className="pr-3 font-semibold text-navy">{["1 · Económico", "2", "3 · Medio", "4", "5 · Muy caro"][i]}</td>
+                    {(["USD", "EUR"] as const).flatMap((c) =>
+                      [0, 1].map((j) => (
+                        <td key={`${c}${j}`} className="py-1 pr-3">
+                          <input name={`${c}-${i}-${j === 0 ? "l" : "h"}`} type="number" min={1} max={1999} defaultValue={spend[c][i]?.[j]} className={`${smallInput} w-20`} aria-label={`${c} ${j === 0 ? "mínimo" : "máximo"} nivel ${i + 1}`} />
+                        </td>
+                      )),
+                    )}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {owner && <button className={`${smallBtn} mt-3`}>Guardar valores</button>}
+          </form>
         </Panel>
         <Panel title="Modelo de puntaje (ponderaciones base)">
           <form action={saveWeights} className="grid grid-cols-2 gap-2 text-sm">

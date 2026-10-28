@@ -21,16 +21,46 @@ export async function destinationPhotos(stopName: string, country: string, count
   return perSpot.flat().filter((m) => !seen.has(m.url) && seen.add(m.url)).slice(0, count);
 }
 
-/** Medios de la propuesta: imágenes por parada y videos del destino principal. */
+const GENERIC_ZONE = /^(centro|centro historico|centro storico|ciudad|ciudad vieja|old town|new town|altstadt|downtown|riverside|laderas|innere stadt|hoteles)\b/i;
+
+/** Búsqueda de foto para una zona de alojamiento («Sol / Centro», Madrid → «Sol Madrid»). Si es genérica, null. */
+function zoneQuery(zone: string, city: string): string | null {
+  const plain = zone.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  if (GENERIC_ZONE.test(plain)) return null;
+  const inner = zone.match(/\(([^)]+)\)/)?.[1];
+  const first = (inner && !/lago|siracusa/i.test(inner) ? inner : zone.replace(/\(.*?\)/g, "")).split(/[\/,]/)[0].trim();
+  return first.length > 2 ? `${first} ${city.split(/[:(]/)[0].trim()}` : null;
+}
+
+/** Una foto de cada zona sugerida para alojarse (la zona, no un hotel). */
+async function zonePhotos(p: ClientProposal): Promise<Record<string, MediaItem[]>> {
+  const it = p.itinerary;
+  const out: Record<string, MediaItem[]> = {};
+  if (!it) return out;
+  await Promise.all(
+    it.lodging.map(async (l) => {
+      const stop = it.stops.find((s) => s.id === l.stopId);
+      if (!stop) return;
+      const q = zoneQuery(l.zone, stop.name);
+      out[l.stopId] = q ? await imagesFor(q, 1, 2500) : [];
+    }),
+  );
+  return out;
+}
+
+/** Medios de la propuesta: imágenes por parada, de las zonas de alojamiento y videos del destino principal. */
 export async function proposalMedia(p: ClientProposal, opts: { videos?: boolean } = {}) {
   const it = p.itinerary;
   const stopImages: Record<string, MediaItem[]> = {};
-  if (!it) return { stopImages, videos: [] as MediaItem[], videosConfigured: true };
-  await Promise.all(
-    it.stops.map(async (s) => {
-      stopImages[s.id] = await destinationPhotos(s.name, s.country, 3);
-    }),
-  );
+  if (!it) return { stopImages, zoneImages: {} as Record<string, MediaItem[]>, videos: [] as MediaItem[], videosConfigured: true };
+  const [, zoneImages] = await Promise.all([
+    Promise.all(
+      it.stops.map(async (s) => {
+        stopImages[s.id] = await destinationPhotos(s.name, s.country, 3);
+      }),
+    ),
+    zonePhotos(p),
+  ]);
   let videos: MediaItem[] = [];
   let videosConfigured = true;
   if (opts.videos !== false) {
@@ -39,5 +69,5 @@ export async function proposalMedia(p: ClientProposal, opts: { videos?: boolean 
     videos = v.items;
     videosConfigured = v.configured;
   }
-  return { stopImages, videos, videosConfigured };
+  return { stopImages, zoneImages, videos, videosConfigured };
 }

@@ -13,7 +13,7 @@ export function ProposalReport({
   footer,
 }: {
   proposal: ClientProposal;
-  media: { stopImages: Record<string, MediaItem[]>; videos: MediaItem[]; videosConfigured: boolean; cover?: MediaItem | null };
+  media: { stopImages: Record<string, MediaItem[]>; zoneImages?: Record<string, MediaItem[]>; videos: MediaItem[]; videosConfigured: boolean; cover?: MediaItem | null };
   printMode?: boolean;
   footer?: React.ReactNode;
 }) {
@@ -94,7 +94,7 @@ export function ProposalReport({
         </section>
       )}
 
-      <ItineraryView proposal={p} stopImages={media.stopImages} videos={media.videos} videosConfigured={media.videosConfigured} printMode={printMode} />
+      <ItineraryView proposal={p} stopImages={media.stopImages} zoneImages={media.zoneImages} videos={media.videos} videosConfigured={media.videosConfigured} printMode={printMode} />
 
       <section className="avoid-break rounded-[2rem] bg-navy p-8 text-white">
         <h2 className="flex items-center gap-2 text-2xl font-semibold text-white">

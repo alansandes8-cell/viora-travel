@@ -15,17 +15,60 @@ function fmtDate(iso?: string) {
 
 const EFFORT = ["", "Exigencia baja", "Exigencia media", "Exigencia alta"];
 
+const SYMBOL = { USD: "US$", EUR: "€" } as const;
+
+/** Referencia de gastos del día a día (sin alojamiento ni vuelos). No es una cotización. */
+function DailySpendCard({ items }: { items: ClientProposal["dailySpend"] }) {
+  const byCurrency = new Map<string, { low: number; high: number }>();
+  for (const d of items) {
+    const t = byCurrency.get(d.currency) ?? { low: 0, high: 0 };
+    byCurrency.set(d.currency, { low: t.low + d.low * d.nights, high: t.high + d.high * d.nights });
+  }
+  const fmt = (n: number) => n.toLocaleString("es-AR");
+  return (
+    <section className="avoid-break" data-daily-spend>
+      <Card className="p-5">
+        <h2 className="text-lg font-semibold">💶 Gastos diarios orientativos</h2>
+        <p className="mt-1 text-sm text-muted">Lo que conviene separar por persona y por día para comidas, transporte local y entradas. No incluye alojamiento ni vuelos.</p>
+        <ul className="mt-3 divide-y divide-line text-sm">
+          {items.map((d) => (
+            <li key={d.name} className="flex flex-wrap items-baseline justify-between gap-2 py-2">
+              <span className="font-semibold text-navy">{d.name}</span>
+              <span>
+                {SYMBOL[d.currency]} {fmt(d.low)}–{fmt(d.high)} <span className="text-muted">por día · {d.nights} noches</span>
+              </span>
+            </li>
+          ))}
+        </ul>
+        <p className="mt-3 rounded-xl bg-sand-2 px-3 py-2 text-sm text-navy">
+          Para todo el viaje, por persona:{" "}
+          {[...byCurrency.entries()].map(([c, t], i) => (
+            <b key={c}>
+              {i > 0 ? " + " : ""}
+              {SYMBOL[c as "USD" | "EUR"]} {fmt(t.low)}–{fmt(t.high)}
+            </b>
+          ))}{" "}
+          aprox.
+        </p>
+        <p className="mt-2 text-xs text-muted">Referencia orientativa de VIORA según el destino y el nivel de viaje elegido; varía con el tipo de cambio y tus elecciones. No es una cotización.</p>
+      </Card>
+    </section>
+  );
+}
+
 export function ItineraryView({
   proposal,
   stopImages,
+  zoneImages = {},
   videos,
-  videosConfigured,
   printMode = false,
 }: {
   proposal: ClientProposal;
   stopImages: Record<string, MediaItem[]>;
+  zoneImages?: Record<string, MediaItem[]>;
   videos: MediaItem[];
-  videosConfigured: boolean;
+  /** Ya no cambia la vista: siempre se ofrecen búsquedas en YouTube por ciudad. */
+  videosConfigured?: boolean;
   printMode?: boolean;
 }) {
   const it = proposal.itinerary;
@@ -127,14 +170,23 @@ export function ItineraryView({
                   </figure>
                 ))}
               </div>
-            ) : (
-              <p className="mt-2 text-sm text-muted">
-                {videosConfigured ? "No encontramos videos apropiados para este destino." : "Los videos todavía no están habilitados."}{" "}
-                <a className="underline" href={`https://www.youtube.com/results?search_query=${encodeURIComponent(it.stops.map((s) => s.name).join(" ") + " viaje")}`} target="_blank" rel="noopener noreferrer">
-                  Buscar videos en YouTube
+            ) : null}
+            <div className="mt-3 flex flex-wrap gap-2">
+              {it.stops.map((s) => (
+                <a
+                  key={s.id}
+                  className="inline-flex items-center gap-2 rounded-full border border-line bg-white px-3.5 py-2 text-sm font-semibold text-navy hover:border-coral-brand"
+                  href={`https://www.youtube.com/results?search_query=${encodeURIComponent(`${s.name.split(/[:(]/)[0].trim()} ${s.country} qué ver viaje`)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <span className="text-coral-brand" aria-hidden>
+                    ▶
+                  </span>{" "}
+                  Videos de {s.name} en YouTube
                 </a>
-              </p>
-            )}
+              ))}
+            </div>
           </div>
         )}
       </section>
@@ -223,7 +275,9 @@ export function ItineraryView({
           {it.lodging.map((l) => {
             const stop = it.stops.find((s) => s.id === l.stopId);
             return (
-              <Card key={l.stopId} className="p-4">
+              <Card key={l.stopId} className="overflow-hidden">
+                {zoneImages[l.stopId]?.[0] && <SmartImage image={zoneImages[l.stopId][0]} alt={`Zona ${l.zone}, ${stop?.name}`} thumb className="aspect-[16/7] w-full" />}
+                <div className="p-4">
                 <p className="text-xs font-bold uppercase tracking-wide text-muted">{stop?.name}</p>
                 <p className="mt-1 font-semibold text-navy">{l.category}</p>
                 <p className="text-sm text-muted">
@@ -245,12 +299,26 @@ export function ItineraryView({
                     ))}
                   </ul>
                 )}
-                <p className="mt-2 text-xs text-muted">Disponibilidad y condiciones a confirmar por un asesor.</p>
+                {!printMode && stop && (
+                  <a
+                    href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`hoteles ${l.zone.split(/[\/(]/)[0].trim()} ${stop.name.split(/[:(]/)[0].trim()}`)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mt-2 inline-flex items-center gap-1 text-sm font-semibold text-cyan-brand underline"
+                  >
+                    <MapPin className="h-4 w-4" aria-hidden /> Ver hoteles de esta zona en Google Maps
+                  </a>
+                )}
+                <p className="mt-2 text-xs text-muted">Son ideas para ubicarte: no es una recomendación de hotel. Disponibilidad y condiciones a confirmar por un asesor.</p>
+                </div>
               </Card>
             );
           })}
         </div>
       </section>
+
+      {/* Gastos diarios orientativos */}
+      {proposal.dailySpend?.length > 0 && <DailySpendCard items={proposal.dailySpend} />}
 
       {/* Recomendaciones y requisitos */}
       <section className="grid gap-6 md:grid-cols-2 avoid-break">

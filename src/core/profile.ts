@@ -1,6 +1,7 @@
 import { BUDGET_TIER_DEFS, INTEREST_LABELS, LODGING_LABELS, MONTHS_ES, ORIGIN_CITIES, PRIORITY_BY_ID, TRIP_STYLE_BY_ID } from "./catalog";
 import { SUPER_REGION } from "./library";
 import { applyThisOrThat } from "./game";
+import { detectExperiences, EXPERIENCES } from "./experiences";
 import { classifyMentions, extractInterests, extractNights, matchCountries, matchCountryCodes, matchDestinations, matchRegions, normalize } from "./text";
 import type { Destination, InferredItem, Interest, IntakeAnswers, MissingItem, Pace, TravelerProfile } from "./types";
 
@@ -127,7 +128,7 @@ export function buildProfile(answers: IntakeAnswers, library: Destination[]): Tr
   const originCity = ORIGIN_CITIES.find((c) => normalize(c.city) === normalize(answers.origin.city));
   const originAirports = answers.origin.airport ? [answers.origin.airport.toUpperCase()] : originCity?.airports ?? [];
   declared.push({ label: "Origen", value: `${answers.origin.city}, ${answers.origin.country}` });
-  if (!originCity) {
+  if (!originCity && answers.origin.lat === undefined) {
     missing.push({ key: "origin_coords", label: "Aeropuerto de salida (para estimar tiempos de vuelo)", impact: "medium" });
   }
 
@@ -164,7 +165,8 @@ export function buildProfile(answers: IntakeAnswers, library: Destination[]): Tr
   if (excluded.size) declared.push({ label: "No quiere visitar", value: [...answers.history.wouldNotReturn, ...answers.history.avoid].join(", ") });
 
   // ── Deseos explícitos ──
-  const wishIds = new Set<string>([...mentions.wish, ...pendingIds]);
+  // `ai_*`: lo que la IA entendió del texto libre (ids de la biblioteca validados en el servidor).
+  const wishIds = new Set<string>([...mentions.wish, ...pendingIds, ...asList(extra.ai_wish).filter((id) => library.some((d) => d.id === id))]);
   if (visitedIds.size || visitedCountries.size) {
     inferred.push({
       key: "known",
@@ -213,6 +215,36 @@ export function buildProfile(answers: IntakeAnswers, library: Destination[]): Tr
   if (shapes.length && shapes.every((s) => s === "single")) shape = "single";
   else if (shapes.length && shapes.every((s) => s !== "single") && shapes.includes("multi")) shape = "multi";
   if (pr.has("few_hotel_changes") && shape === "open") shape = "single";
+  // Lo que dice con sus palabras pesa más que el estilo por defecto.
+  const dreamN = normalize(dream);
+  if (/\b(ciudades|recorrer|recorrido|ruta|varios destinos|varios lugares|varios paises)\b/.test(dreamN) && !pr.has("few_hotel_changes")) shape = "multi";
+  else if (/\b(un solo (lugar|destino|hotel)|sin cambiar de hotel|un mismo hotel)\b/.test(dreamN)) shape = "single";
+  const experiences = [...new Set([...detectExperiences(dream), ...asList(extra.ai_experiences).filter((e) => EXPERIENCES.some((x) => x.id === e))])];
+  if (experiences.includes("trekking")) {
+    bump("nature", 1);
+    bump("adventure", 1);
+  }
+  if (experiences.length) {
+    inferred.push({
+      key: "experiences",
+      label: "Experiencias que pidió",
+      value: EXPERIENCES.filter((e) => experiences.includes(e.id)).map((e) => e.label).join(", "),
+      rationale: "Se priorizan destinos y actividades que realmente las ofrecen.",
+      confidence: "high",
+      by: "rules",
+    });
+  }
+  const wishCountries = [...new Set([...mentions.wishCountries, ...asList(extra.ai_countries).filter((cc) => library.some((d) => d.countryCode === cc))])];
+  if (wishCountries.length) {
+    inferred.push({
+      key: "countries",
+      label: "Países que quiere conocer",
+      value: wishCountries.map((cc) => library.find((d) => d.countryCode === cc)?.country ?? cc).join(", "),
+      rationale: "Mencionados en la descripción: las alternativas se arman dentro de esos países.",
+      confidence: "high",
+      by: "rules",
+    });
+  }
 
   // ── Restricciones ──
   const reducedMobility = !!answers.party.mobility && answers.party.mobility !== "none";
@@ -256,10 +288,12 @@ export function buildProfile(answers: IntakeAnswers, library: Destination[]): Tr
     partyType: answers.party.type,
     travelers,
     originLabel: `${answers.origin.city}, ${answers.origin.country}`,
-    originCoords: originCity ? { lat: originCity.lat, lng: originCity.lng } : null,
+    originCoords: originCity ? { lat: originCity.lat, lng: originCity.lng } : answers.origin.lat !== undefined && answers.origin.lng !== undefined ? { lat: answers.origin.lat, lng: answers.origin.lng } : null,
     originAirports,
     wishIds: [...wishIds],
     wishRegions: [...wishRegions],
+    wishCountries,
+    experiences,
     effortCap,
     includeKnown: extra.include_known === "yes",
     preferFlightsOverLongTrains: extra.long_trains === "no",

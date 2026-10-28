@@ -1,3 +1,4 @@
+import { dailySpendFor, type DailySpendTable } from "./daily-spend";
 import { BASE_WEIGHTS, BUDGET_REGION_HINTS, MONTHS_ES } from "./catalog";
 import { generateCandidates, tripNights, type Candidate } from "./candidates";
 import { buildItinerary, newId } from "./itinerary";
@@ -22,6 +23,8 @@ export interface PlanContext {
   connections: KnownConnection[];
   baseWeights?: Record<Criterion, number>;
   now?: Date;
+  /** Tabla de gastos diarios orientativos de la agencia (Ajustes). */
+  dailySpend?: DailySpendTable;
 }
 
 interface Scored extends Candidate {
@@ -285,6 +288,10 @@ export function refreshDerived(doc: PlanDocument, ctx: PlanContext): void {
   }
   const expected = profile.nights ?? tripNights(profile);
   doc.checks = [...baseChecks, ...validateItinerary(it, profile, ctx.library, expected)];
+  doc.dailySpend = it.stops.flatMap((s) => {
+    const d = ctx.library.find((x) => x.id === s.destinationId);
+    return d ? [{ stopId: s.id, name: s.name, nights: s.nights, ...dailySpendFor(d, profile.budgetTier, ctx.dailySpend) }] : [];
+  });
   const countries = new Map<string, string>();
   for (const s of it.stops) {
     const d = ctx.library.find((x) => x.id === s.destinationId);

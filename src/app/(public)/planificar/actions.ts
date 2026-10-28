@@ -19,3 +19,8 @@ export async function submitAction(answers: unknown, budget: unknown) {
 export async function newTripDraftAction() {
   await startNewTrip();
 }
+
+export async function interpretDreamAction(text: string) {
+  const { interpretDream } = await import("@/server/services/dream");
+  return interpretDream(String(text ?? ""));
+}

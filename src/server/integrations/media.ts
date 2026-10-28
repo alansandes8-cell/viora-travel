@@ -41,13 +41,34 @@ interface Provider {
   search: (query: string, count: number) => Promise<ProviderResult & { externalIds: string[] }>;
 }
 
-const UA = "VioraTravel/1.0 (agencia de viajes; contacto en el sitio)";
+// Wikimedia pide identificarse con un sitio de contacto; sin eso aplica límites más estrictos.
+const UA = () => `VioraTravel/1.1 (+${(process.env.APP_URL ?? "https://vioratravel.duckdns.org").replace(/\/$/, "")}; agencia de viajes)`;
 const TTL_DAYS = 30;
+// Cuánto se recuerda cada resultado: los errores se reintentan pronto; «sin foto», en unos días.
+const TTL_BY_STATUS: Record<string, number> = { ok: TTL_DAYS, empty: 3, error: 10 / 1440 };
 
-async function getJson(url: string, headers: Record<string, string> = {}) {
-  const res = await fetch(url, { headers: { "User-Agent": UA, ...headers }, signal: AbortSignal.timeout(8000) });
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  return res.json();
+// Pocas consultas a la vez por proveedor (evita ráfagas que los proveedores limitan).
+const slots = new Map<string, number>();
+const waiting = new Map<string, (() => void)[]>();
+async function throttled<T>(key: string, max: number, fn: () => Promise<T>): Promise<T> {
+  if ((slots.get(key) ?? 0) >= max) await new Promise<void>((r) => waiting.set(key, [...(waiting.get(key) ?? []), r]));
+  slots.set(key, (slots.get(key) ?? 0) + 1);
+  try {
+    return await fn();
+  } finally {
+    slots.set(key, (slots.get(key) ?? 1) - 1);
+    const next = waiting.get(key)?.shift();
+    next?.();
+  }
+}
+
+export async function getJson(url: string, headers: Record<string, string> = {}) {
+  const host = new URL(url).host;
+  return throttled(host, 2, async () => {
+    const res = await fetch(url, { headers: { "User-Agent": UA(), "Api-User-Agent": UA(), ...headers }, signal: AbortSignal.timeout(10_000) });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return res.json();
+  });
 }
 
 const unsplash: Provider = {
@@ -162,6 +183,40 @@ const youtube: Provider = {
 export const IMAGE_PROVIDERS = [wikipedia, unsplash, pexels];
 export const VIDEO_PROVIDERS = [youtube];
 
+/** Guarda en caché el resultado de un proveedor para una búsqueda y devuelve los ids guardados. */
+export async function storeMediaResult(query: string, kind: "image" | "video", provider: string, result: ProviderResult): Promise<string[]> {
+  const q = query.trim().toLowerCase().slice(0, 120);
+  const ids: string[] = [];
+  for (let i = 0; i < result.items.length; i++) {
+    const it = result.items[i];
+    if (!it.url) continue;
+    const [row] = await db()
+      .insert(schema.mediaAssets)
+      .values({ ...it, externalId: result.externalIds?.[i] ?? it.url })
+      .onConflictDoUpdate({
+        target: [schema.mediaAssets.provider, schema.mediaAssets.externalId],
+        set: { url: it.url, thumbUrl: it.thumbUrl, attribution: it.attribution, license: it.license },
+      })
+      .returning({ id: schema.mediaAssets.id });
+    ids.push(row.id);
+  }
+  await db()
+    .insert(schema.mediaQueries)
+    .values({ query: q, kind, provider, assetIds: ids, status: result.status, error: result.error ?? null })
+    .onConflictDoUpdate({
+      target: [schema.mediaQueries.query, schema.mediaQueries.kind, schema.mediaQueries.provider],
+      set: { assetIds: ids, status: result.status, error: result.error ?? null, fetchedAt: sql`now()` },
+    });
+  return ids;
+}
+
+/** ¿Hay en caché una foto vigente para esta búsqueda (de cualquier proveedor)? */
+export async function hasFreshMedia(query: string, kind: "image" | "video" = "image"): Promise<boolean> {
+  const q = query.trim().toLowerCase().slice(0, 120);
+  const rows = await db().query.mediaQueries.findMany({ where: and(eq(schema.mediaQueries.query, q), eq(schema.mediaQueries.kind, kind)) });
+  return rows.some((r) => r.status === "ok" && r.assetIds.length > 0 && Date.now() - r.fetchedAt.getTime() < TTL_DAYS * 86400000);
+}
+
 export function mediaStatus() {
   return [...IMAGE_PROVIDERS, ...VIDEO_PROVIDERS].map((p) => ({ name: p.name, kind: p.kind, configured: p.configured() }));
 }
@@ -201,7 +256,7 @@ export async function findMedia(query: string, kind: "image" | "video", count = 
     const cached = await db().query.mediaQueries.findFirst({
       where: and(eq(schema.mediaQueries.query, q), eq(schema.mediaQueries.kind, kind), eq(schema.mediaQueries.provider, p.name)),
     });
-    const fresh = cached && Date.now() - cached.fetchedAt.getTime() < TTL_DAYS * 86400000 * (cached.status === "error" ? 0.02 : 1);
+    const fresh = cached && Date.now() - cached.fetchedAt.getTime() < (TTL_BY_STATUS[cached.status] ?? TTL_DAYS) * 86400000;
     if (fresh && cached) {
       statuses.push({ provider: p.name, status: `${cached.status} (caché)`, error: cached.error ?? undefined });
       if (cached.status === "ok" && cached.assetIds.length) {
@@ -216,27 +271,7 @@ export async function findMedia(query: string, kind: "image" | "video", count = 
     } catch (e) {
       result = { status: "error", items: [], error: (e as Error).message };
     }
-    const ids: string[] = [];
-    for (let i = 0; i < result.items.length; i++) {
-      const it = result.items[i];
-      if (!it.url) continue;
-      const [row] = await db()
-        .insert(schema.mediaAssets)
-        .values({ ...it, externalId: result.externalIds?.[i] ?? it.url })
-        .onConflictDoUpdate({
-          target: [schema.mediaAssets.provider, schema.mediaAssets.externalId],
-          set: { url: it.url, thumbUrl: it.thumbUrl, attribution: it.attribution, license: it.license },
-        })
-        .returning({ id: schema.mediaAssets.id });
-      ids.push(row.id);
-    }
-    await db()
-      .insert(schema.mediaQueries)
-      .values({ query: q, kind, provider: p.name, assetIds: ids, status: result.status, error: result.error ?? null })
-      .onConflictDoUpdate({
-        target: [schema.mediaQueries.query, schema.mediaQueries.kind, schema.mediaQueries.provider],
-        set: { assetIds: ids, status: result.status, error: result.error ?? null, fetchedAt: sql`now()` },
-      });
+    const ids = await storeMediaResult(query, kind, p.name, result);
     statuses.push({ provider: p.name, status: result.status, error: result.error });
     if (ids.length) {
       const rows = await db().select().from(schema.mediaAssets).where(inArray(schema.mediaAssets.id, ids));

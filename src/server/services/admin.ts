@@ -50,7 +50,13 @@ export async function dashboardStats() {
     .innerJoin(schema.tripProjects, eq(schema.tripProjects.id, schema.quoteRequests.projectId))
     .orderBy(desc(schema.quoteRequests.createdAt))
     .limit(6);
-  return { counts, newClients: clients?.n ?? 0, proposals: proposals?.n ?? 0, interested: interested?.n ?? 0, recent, tasks, followUps, newRequests };
+  const chats = await d
+    .select({ c: schema.chatConversations, client: schema.clients })
+    .from(schema.chatConversations)
+    .leftJoin(schema.clients, eq(schema.clients.id, schema.chatConversations.clientId))
+    .orderBy(desc(schema.chatConversations.updatedAt))
+    .limit(8);
+  return { counts, newClients: clients?.n ?? 0, proposals: proposals?.n ?? 0, interested: interested?.n ?? 0, recent, tasks, followUps, newRequests, chats };
 }
 
 export interface ProjectFilters {

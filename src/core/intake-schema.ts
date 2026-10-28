@@ -28,6 +28,8 @@ export const intakeSchema = z
       city: shortText(80).min(2),
       country: shortText(80).min(2),
       airport: z.string().trim().regex(/^[A-Za-z]{3}$/).optional().or(z.literal("")).transform((v) => v || undefined),
+      lat: z.number().min(-90).max(90).optional(),
+      lng: z.number().min(-180).max(180).optional(),
       altAirportOk: z.boolean().optional(),
       flightPref: z.enum(["direct", "few_stops", "any"]).optional(),
       longLayoverOk: z.boolean().optional(),

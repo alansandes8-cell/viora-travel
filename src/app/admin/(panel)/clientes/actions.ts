@@ -17,6 +17,8 @@ export async function anonymizeClient(clientId: string) {
     await db().update(schema.quoteRequests).set({ name: "Anonimizado", email: null, phone: null, message: null }).where(inArray(schema.quoteRequests.projectId, ids));
     await db().delete(schema.notes).where(inArray(schema.notes.projectId, ids));
   }
+  // Las conversaciones con Viorita también contienen datos personales.
+  await db().delete(schema.chatConversations).where(eq(schema.chatConversations.clientId, clientId));
   await logActivity("client.anonymized", { actorKind: "staff", actorId: staff.id, details: { clientId, projects: ids.length } });
   revalidatePath("/admin/clientes");
   redirect("/admin/clientes");
