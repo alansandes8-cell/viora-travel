@@ -17,6 +17,41 @@ const EFFORT = ["", "Exigencia baja", "Exigencia media", "Exigencia alta"];
 
 const SYMBOL = { USD: "US$", EUR: "€" } as const;
 
+/** Costo aproximado por persona: vuelos + alojamiento + traslados. Referencia de mercado, no cotización. */
+function TripEstimateCard({ e }: { e: NonNullable<ClientProposal["tripEstimate"]> }) {
+  const fmt = (r: [number, number]) => `US$ ${r[0].toLocaleString("es-AR")} – ${r[1].toLocaleString("es-AR")}`;
+  const rows: [string, [number, number]][] = [
+    ...(e.includesFlights ? ([["✈️ Vuelos ida y vuelta (clase turista)", e.flights]] as [string, [number, number]][]) : []),
+    [`🏨 Alojamiento (${e.nights} noches)`, e.lodging],
+    ...(e.transfers[1] > 0 ? ([["🚆 Traslados entre ciudades", e.transfers]] as [string, [number, number]][]) : []),
+  ];
+  return (
+    <section className="avoid-break" data-daily-spend>
+      <Card className="p-5">
+        <h2 className="text-lg font-semibold">💼 Costo aproximado del viaje</h2>
+        <p className="mt-1 text-sm text-muted">Por persona, {e.includesFlights ? "con vuelos desde Argentina, " : ""}alojamiento y traslados, según el nivel de viaje que elegiste. Los gastos del día a día van aparte (abajo).</p>
+        <ul className="mt-3 divide-y divide-line text-sm">
+          {rows.map(([label, r]) => (
+            <li key={label} className="flex flex-wrap items-baseline justify-between gap-2 py-2">
+              <span className="text-navy">{label}</span>
+              <span>{fmt(r)}</span>
+            </li>
+          ))}
+        </ul>
+        <p className="mt-3 rounded-xl bg-teal-brand/10 px-3 py-2 text-navy">
+          Total estimado por persona: <b className="text-lg">{fmt(e.total)}</b>
+          {e.travelers > 1 ? (
+            <span className="block text-sm text-muted">
+              Para {e.travelers} viajeros: US$ {(e.total[0] * e.travelers).toLocaleString("es-AR")} – {(e.total[1] * e.travelers).toLocaleString("es-AR")}
+            </span>
+          ) : null}
+        </p>
+        <p className="mt-2 text-xs text-muted">Estimación con valores promedio de mercado: las tarifas reales cambian según fechas, anticipación y disponibilidad. No es una cotización; tu asesor te pasa el precio final.</p>
+      </Card>
+    </section>
+  );
+}
+
 /** Referencia de gastos del día a día (sin alojamiento ni vuelos). No es una cotización. */
 function DailySpendCard({ items }: { items: ClientProposal["dailySpend"] }) {
   const byCurrency = new Map<string, { low: number; high: number }>();
@@ -316,6 +351,9 @@ export function ItineraryView({
           })}
         </div>
       </section>
+
+      {/* Costo aproximado del viaje */}
+      {proposal.tripEstimate && <TripEstimateCard e={proposal.tripEstimate} />}
 
       {/* Gastos diarios orientativos */}
       {proposal.dailySpend?.length > 0 && <DailySpendCard items={proposal.dailySpend} />}

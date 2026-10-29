@@ -39,6 +39,15 @@ Fecha: 26/10/2026. Este documento separa lo que **funciona y fue probado**, lo q
 - Progreso como pasaporte con sellos, tarjeta «Tu perfil viajero» y confeti al ver la propuesta (se desactiva con «reducir movimiento»).
 - Fotos: en la plataforma salen de Unsplash/Pexels/Wikimedia si hay claves; si no hay foto, se muestra una postal ilustrada del destino rotulada «Ilustración». La vista previa usa solo ilustraciones.
 
+### Cuarta ronda: coherencia con lo que pide la persona
+
+- **Intenciones fuertes**: lo que la persona repite en dos o más respuestas (estilo, prioridades, juego, texto) manda: las alternativas se limitan a destinos fuertes en eso (con respaldo si no alcanzan). Ej.: compras → Miami y Orlando, Nueva York; con días de compras en lugares reales (outlets, Ross, Marshalls, TJ Maxx, Sawgrass Mills, Dolphin Mall, Woodbury Common).
+- **Negativos que siempre ganan**: «no me interesa París» nunca vuelve a aparecer, aunque la IA lo sugiera. Se agregaron 5 destinos de Francia (Costa Azul, Provenza, Valle del Loira, Normandía y Mont Saint-Michel, Alsacia).
+- **Costo aproximado del viaje** (por persona y para el grupo): vuelos desde Argentina + alojamiento + traslados, según nivel de viaje y temporada alta. Valores promedio de referencia editables en Ajustes; se aclara que no es una cotización. Gastos diarios recalibrados (~70 € por día en Europa de costo medio).
+- **Fotos**: las playas muestran primero la playa; varios lugares de respaldo por destino y por categoría; se aceptan fotos verticales; las alternativas usan la primera foto real disponible.
+- **Cuestionario de 7 pasos** (antes 10): «¿Cuándo y desde dónde?», «¿Qué te gusta y qué no?» (prioridades + lugares conocidos / que no interesan) y alojamiento dentro de «Últimas preguntas». Se quitaron el orden de prioridades, «indispensables», qué incluye el presupuesto, flexibilidad del presupuesto, preferencias de vuelo y transporte.
+- Pruebas: 62 unitarias y 16 e2e pasan.
+
 ### Tercera ronda de ajustes de la agencia
 
 - **Fotos**: la causa probable de las fotos faltantes era el límite de Wikipedia para consultas sin identificación de contacto y en ráfaga, con el error recordado 14 h. Ahora: identificación con el sitio, como máximo 2 consultas a la vez, precarga agrupada al iniciar el servidor (≈ 8 consultas para ~185 lugares) y reintento de errores a los 10 min. Panel → Ajustes → «Fotos de destinos» muestra cuántas hay y permite volver a buscarlas. **No verificado en vivo** (el entorno de desarrollo no accede a Wikipedia).
@@ -82,7 +91,7 @@ Fecha: 26/10/2026. Este documento separa lo que **funciona y fue probado**, lo q
 
 Entorno: Node 22, PostgreSQL 16 local, Chromium 1243. Resultados reales de esta sesión.
 
-**Unitarias y de escenarios** (`pnpm test`, Vitest): **58 pruebas pasan, 0 fallan** (3 de integración con la base se omiten si no hay base configurada).
+**Unitarias y de escenarios** (`pnpm test`, Vitest): **62 pruebas pasan, 0 fallan** (3 de integración con la base se omiten si no hay base configurada).
 
 | Escenario del pedido | Prueba | Resultado |
 |---|---|---|

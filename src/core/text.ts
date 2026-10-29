@@ -13,6 +13,11 @@ export function normalize(s: string): string {
 const ALIASES: Record<string, string[]> = {
   londres: ["london"],
   paris: ["paris"],
+  "costa-azul": ["niza", "nice", "costa azul", "cote d azur", "monaco", "cannes", "antibes"],
+  provenza: ["provenza", "provence", "avinon", "avignon", "lavanda", "marsella"],
+  loira: ["loira", "castillos del loira", "chenonceau", "chambord"],
+  normandia: ["normandia", "mont saint michel", "saint michel", "etretat"],
+  alsacia: ["alsacia", "estrasburgo", "strasbourg", "colmar"],
   roma: ["rome"],
   florencia: ["florence", "firenze", "toscana"],
   venecia: ["venice"],

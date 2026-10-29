@@ -111,7 +111,8 @@ function toImage(ii: any, title: string): WikiImage | null {
   if (!license || !FREE_LICENSE.test(license)) return null;
   const w = ii.width ?? 0;
   const h = ii.height ?? 0;
-  if (w < 1000 || w < h * 1.05) return null;
+  // Se aceptan verticales (se recortan al mostrarlas), pero no imágenes chicas ni tiras muy angostas.
+  if (Math.max(w, h) < 1000 || h > w * 1.8) return null;
   const author = stripHtml(meta.Artist?.value);
   return {
     provider: "wikipedia",

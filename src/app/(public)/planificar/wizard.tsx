@@ -3,10 +3,8 @@
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
-  ArrowDown,
   ArrowLeft,
   ArrowRight,
-  ArrowUp,
   RotateCcw,
   Check,
   Loader2,
@@ -21,30 +19,28 @@ import {
   MONTHS_ES,
   PARTY_EMOJI,
   PRIORITY_DEFS,
-  TRANSPORT_EMOJI,
-  TRANSPORT_LABELS,
   TRIP_STYLE_DEFS,
 } from "@/core/catalog";
 import { THIS_OR_THAT } from "@/core/game";
 import type { SmartQuestion } from "@/core/questions";
-import type { IntakeAnswers, LodgingType, PartyType, Priority, TransportMode, TripStyle } from "@/core/types";
+import type { IntakeAnswers, LodgingType, PartyType, TripStyle } from "@/core/types";
 import { ACCENTS, Button, Field, Notice, cx, inputClass } from "@/components/ui";
 import { applyReading } from "@/core/dream";
 import { PlaceSearch } from "@/components/place-search";
 import { interpretDreamAction, newTripDraftAction, saveDraftAction, smartQuestionsAction, submitAction } from "./actions";
 
 const STEPS = [
-  { key: "style", emoji: "✈️", title: "¿Qué tipo de viaje soñás?", subtitle: "Elegí uno o varios estilos, o contalo con tus palabras." },
-  { key: "game", emoji: "🎲", title: "¿Esto o aquello?", subtitle: "Elegí rápido, sin pensarlo mucho. Si te gustan los dos, tocá «¡Los dos!». Es opcional." },
-  { key: "dates", emoji: "📅", title: "¿Cuándo querés viajar?", subtitle: "Si todavía no tenés fechas, no pasa nada: exploramos temporadas." },
-  { key: "origin", emoji: "🛫", title: "¿Desde dónde salís?", subtitle: "Nos ayuda a estimar tiempos de vuelo y conexiones." },
-  { key: "party", emoji: "👥", title: "¿Con quién viajás?", subtitle: "Solo lo necesario para adaptar el plan." },
-  { key: "budget", emoji: "👛", title: "¿Cuál es tu presupuesto?", subtitle: "Es una orientación inicial, no una cotización." },
-  { key: "priorities", emoji: "⭐", title: "¿Qué cosas son importantes para vos?", subtitle: "Elegí, ordená y marcá lo indispensable." },
-  { key: "history", emoji: "🗺️", title: "¿Qué destinos ya conocés?", subtitle: "Así evitamos recomendarte lo mismo de siempre." },
-  { key: "stay", emoji: "🛏️", title: "Alojamiento y traslados", subtitle: "Contanos cómo te gusta viajar." },
-  { key: "smart", emoji: "💬", title: "Unas últimas preguntas", subtitle: "Solo las que pueden cambiar la recomendación." },
+  { key: "style", parts: ["style"], emoji: "✈️", title: "¿Qué tipo de viaje soñás?", subtitle: "Elegí uno o varios estilos, o contalo con tus palabras." },
+  { key: "game", parts: ["game"], emoji: "🎲", title: "¿Esto o aquello?", subtitle: "Elegí rápido, sin pensarlo mucho. Si te gustan los dos, tocá «¡Los dos!». Es opcional." },
+  { key: "when", parts: ["dates", "origin"], emoji: "📅", title: "¿Cuándo y desde dónde?", subtitle: "Si todavía no tenés fechas, no pasa nada: te sugerimos la mejor época." },
+  { key: "party", parts: ["party"], emoji: "👥", title: "¿Con quién viajás?", subtitle: "Solo lo necesario para adaptar el plan." },
+  { key: "budget", parts: ["budget"], emoji: "👛", title: "¿Cuál es tu presupuesto?", subtitle: "Es una orientación inicial, no una cotización." },
+  { key: "likes", parts: ["priorities", "history"], emoji: "⭐", title: "¿Qué te gusta y qué no?", subtitle: "Tocá lo que más te importa y contanos qué lugares ya conocés o no te interesan." },
+  { key: "smart", parts: ["smart", "stay"], emoji: "💬", title: "Unas últimas preguntas", subtitle: "Todas opcionales: solo las que pueden cambiar la recomendación." },
 ] as const;
+
+type StepPart = (typeof STEPS)[number]["parts"][number];
+const stepHas = (i: number, part: StepPart) => (STEPS[i].parts as readonly string[]).includes(part);
 
 const DEFAULTS: IntakeAnswers = {
   tripStyles: [],
@@ -80,18 +76,24 @@ type AirportOption = { iata: string; name: string; city: string; country: string
 type PlaceOption = { kind: "city" | "country"; label: string; detail?: string };
 
 /** Paso del cuestionario al que pertenece un campo (p. ej. «dates.return» → «dates»). */
-function stepOfField(path: string): StepKey {
+function partOfField(path: string): StepPart {
   const [head, sub] = path.split(".");
   if (head === "tripStyles" || head === "dreamText" || head === "style") return "style";
   if (head === "nights") return "dates";
   if (head === "extra") return sub?.startsWith("tot_") ? "game" : "smart";
-  return (STEPS.find((s) => s.key === head)?.key ?? "smart") as StepKey;
+  return STEPS.some((st) => (st.parts as readonly string[]).includes(head)) ? (head as StepPart) : "smart";
+}
+
+/** Paso del cuestionario donde se completa un campo (p. ej. «dates.return» → «when»). */
+function stepOfField(path: string): StepKey {
+  const part = partOfField(path);
+  return (STEPS.find((st) => (st.parts as readonly string[]).includes(part))?.key ?? "smart") as StepKey;
 }
 
 /** Clave de error que muestra cada campo del formulario. */
 function displayKey(path: string): string {
   if (path === "dates.nights") return "nights";
-  return stepOfField(path);
+  return partOfField(path);
 }
 
 /** Los mensajes técnicos de la validación del servidor se reemplazan por uno claro. */
@@ -148,6 +150,7 @@ export function Wizard({
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [proposalExists, setProposalExists] = useState(hasProposal);
   const [resetting, startReset] = useTransition();
+  const [showAllPriorities, setShowAllPriorities] = useState(false);
   const [reading, setReading] = useState<Awaited<ReturnType<typeof interpretDreamAction>>>(null);
   const [readingFor, setReadingFor] = useState("");
   const [reading_, startReading] = useTransition();
@@ -219,9 +222,8 @@ export function Wizard({
 
   function validate(s: number): Record<string, string> {
     const e: Record<string, string> = {};
-    const key = STEPS[s].key;
-    if (key === "style" && !a.tripStyles.length && (a.dreamText ?? "").trim().length < 10) e.style = "Elegí al menos un estilo o describí tu idea.";
-    if (key === "dates") {
+    if (stepHas(s, "style") && !a.tripStyles.length && (a.dreamText ?? "").trim().length < 10) e.style = "Elegí al menos un estilo o describí tu idea.";
+    if (stepHas(s, "dates")) {
       if (a.dates.mode === "exact") {
         if (!a.dates.departure || !a.dates.return) e.dates = "Indicá la fecha de salida y la de regreso.";
         else if (nightsFromDates !== null && nightsFromDates <= 0) e.dates = "La fecha de regreso debe ser posterior a la de salida.";
@@ -229,12 +231,12 @@ export function Wizard({
       }
       if (a.dates.nights !== undefined && (a.dates.nights < 1 || a.dates.nights > 90)) e.nights = "Entre 1 y 90 noches.";
     }
-    if (key === "origin" && (a.origin.city.trim().length < 2 || a.origin.country.trim().length < 2)) e.origin = "Indicá ciudad y país de salida.";
-    if (key === "party") {
+    if (stepHas(s, "origin") && (a.origin.city.trim().length < 2 || a.origin.country.trim().length < 2)) e.origin = "Indicá ciudad y país de salida.";
+    if (stepHas(s, "party")) {
       if (a.party.adults < 1) e.party = "Al menos un adulto.";
       if (a.party.childrenAges.some((x) => Number.isNaN(x) || x < 0 || x > 17)) e.party = "Revisá las edades de los chicos (0 a 17).";
     }
-    if (key === "budget" && budgetAmount.amount && !(Number(budgetAmount.amount.replace(",", ".")) > 0)) e.budget = "Ingresá un monto válido o dejalo vacío.";
+    if (stepHas(s, "budget") && budgetAmount.amount && !(Number(budgetAmount.amount.replace(",", ".")) > 0)) e.budget = "Ingresá un monto válido o dejalo vacío.";
     return e;
   }
 
@@ -387,7 +389,7 @@ export function Wizard({
       )}
 
       <div className="mt-8 fade-in" key={S.key}>
-        {S.key === "style" && (
+        {stepHas(step, "style") && (
           <div className="space-y-6">
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
               {TRIP_STYLE_DEFS.map((s) => {
@@ -447,7 +449,7 @@ export function Wizard({
           </div>
         )}
 
-        {S.key === "game" && (
+        {stepHas(step, "game") && (
           <div className="space-y-3">
             {THIS_OR_THAT.map((q) => {
               const cur = a.extra[q.id];
@@ -480,7 +482,7 @@ export function Wizard({
           </div>
         )}
 
-        {S.key === "dates" && (
+        {stepHas(step, "dates") && (
           <div className="space-y-6">
             <div className="inline-flex flex-wrap gap-2 rounded-2xl bg-sand-2 p-1" role="tablist" aria-label="Tipo de fecha">
               {(
@@ -570,7 +572,7 @@ export function Wizard({
           </div>
         )}
 
-        {S.key === "origin" && (
+        {stepHas(step, "origin") && (
           <div className="space-y-6">
             <Field label="Ciudad o aeropuerto de salida" hint="Escribí la ciudad, el país o el código del aeropuerto (por ejemplo: Córdoba, Montevideo o EZE)." htmlFor="origin-search" error={errors.origin}>
               <div className="rounded-xl border border-line bg-white px-2 py-1">
@@ -614,21 +616,10 @@ export function Wizard({
                 ))}
               </div>
             </Field>
-            <div className="grid gap-3 text-sm sm:grid-cols-3">
-              <label className="flex items-center gap-2">
-                <input type="checkbox" checked={!!a.origin.altAirportOk} onChange={(e) => set("origin", { ...a.origin, altAirportOk: e.target.checked })} /> Puedo salir de otro aeropuerto
-              </label>
-              <label className="flex items-center gap-2">
-                <input type="checkbox" checked={!!a.origin.longLayoverOk} onChange={(e) => set("origin", { ...a.origin, longLayoverOk: e.target.checked })} /> Tolero escalas largas
-              </label>
-              <label className="flex items-center gap-2">
-                <input type="checkbox" checked={a.origin.overnightOk !== false} onChange={(e) => set("origin", { ...a.origin, overnightOk: e.target.checked })} /> Puedo volar de noche
-              </label>
-            </div>
           </div>
         )}
 
-        {S.key === "party" && (
+        {stepHas(step, "party") && (
           <div className="space-y-6">
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
               {(
@@ -699,7 +690,7 @@ export function Wizard({
           </div>
         )}
 
-        {S.key === "budget" && (
+        {stepHas(step, "budget") && (
           <div className="space-y-6">
             <div className="grid gap-4 sm:grid-cols-3">
               <Field label="¿Con qué presupuesto contás?" hint="Aproximado y opcional. Solo lo ve el equipo de VIORA para ajustar la propuesta." htmlFor="amount" error={errors.budget}>
@@ -734,42 +725,13 @@ export function Wizard({
               ))}
             </div>
             <Notice>El nivel se interpreta según la región y la duración: un mismo monto rinde distinto en el Caribe, en Brasil o en Europa. Esta información es solo para orientar la propuesta.</Notice>
-            <Field label="¿Qué debería incluir?">
-              <div className="flex flex-wrap gap-2">
-                {(
-                  [
-                    ["flights", "Vuelos internacionales"],
-                    ["lodging", "Alojamiento"],
-                    ["meals", "Comidas"],
-                    ["activities", "Excursiones y entradas"],
-                    ["transport", "Transporte interno"],
-                    ["insurance", "Seguro de viaje"],
-                  ] as const
-                ).map(([k, l]) => {
-                  const on = !!a.budget.includes?.[k];
-                  return (
-                    <button key={k} type="button" aria-pressed={on} onClick={() => set("budget", { ...a.budget, includes: { ...a.budget.includes, [k]: !on } })} className={cx("rounded-full border px-3.5 py-2 text-sm font-semibold", on ? "border-teal-brand bg-teal-brand/10 text-teal-brand" : "border-line bg-white text-navy")}>
-                      {on && <Check className="mr-1 inline h-3.5 w-3.5" aria-hidden />}
-                      {l}
-                    </button>
-                  );
-                })}
-              </div>
-            </Field>
-            <Field label="¿Tenés flexibilidad para mejorar la experiencia?" htmlFor="flex">
-              <select id="flex" className={inputClass} value={a.budget.flexibility ?? "some"} onChange={(e) => set("budget", { ...a.budget, flexibility: e.target.value as "none" | "some" | "high" })}>
-                <option value="none">No, es un tope</option>
-                <option value="some">Algo, si vale la pena</option>
-                <option value="high">Sí, bastante</option>
-              </select>
-            </Field>
           </div>
         )}
 
-        {S.key === "priorities" && (
+        {stepHas(step, "priorities") && (
           <div className="space-y-6">
             <div className="flex flex-wrap gap-2">
-              {PRIORITY_DEFS.map((p) => {
+              {PRIORITY_DEFS.filter((p, i) => showAllPriorities || i < 8 || a.priorities.selected.includes(p.id)).map((p) => {
                 const on = a.priorities.selected.includes(p.id);
                 return (
                   <button
@@ -791,65 +753,23 @@ export function Wizard({
                 );
               })}
             </div>
-            {a.priorities.ranking.length > 0 && (
-              <div>
-                <p className="mb-2 text-sm font-semibold text-navy">Ordená tus prioridades (la primera es la más importante) y marcá hasta 3 indispensables:</p>
-                <ol className="space-y-2">
-                  {a.priorities.ranking.map((id, i) => {
-                    const def = PRIORITY_DEFS.find((p) => p.id === id)!;
-                    const must = a.priorities.mustHave.includes(id);
-                    const move = (dir: -1 | 1) => {
-                      const r = [...a.priorities.ranking];
-                      const j = i + dir;
-                      if (j < 0 || j >= r.length) return;
-                      [r[i], r[j]] = [r[j], r[i]];
-                      set("priorities", { ...a.priorities, ranking: r });
-                    };
-                    return (
-                      <li key={id} className="flex items-center gap-2 rounded-xl border border-line bg-white px-3 py-2">
-                        <span className="w-6 font-display text-lg text-purple-brand">{i + 1}</span>
-                        <span className="flex-1 text-sm font-semibold text-navy">
-                          <span aria-hidden>{def.emoji}</span> {def.label}
-                        </span>
-                        <button
-                          type="button"
-                          aria-pressed={must}
-                          disabled={!must && a.priorities.mustHave.length >= 3}
-                          onClick={() => set("priorities", { ...a.priorities, mustHave: toggle(a.priorities.mustHave, id as Priority) })}
-                          className={cx("rounded-full px-2.5 py-1 text-xs font-bold disabled:opacity-40", must ? "bg-coral-brand text-white" : "bg-sand-2 text-navy")}
-                        >
-                          {must ? "Indispensable" : "Marcar indispensable"}
-                        </button>
-                        <button type="button" aria-label="Subir" onClick={() => move(-1)} className="rounded-lg p-1.5 hover:bg-sand-2">
-                          <ArrowUp className="h-4 w-4" />
-                        </button>
-                        <button type="button" aria-label="Bajar" onClick={() => move(1)} className="rounded-lg p-1.5 hover:bg-sand-2">
-                          <ArrowDown className="h-4 w-4" />
-                        </button>
-                      </li>
-                    );
-                  })}
-                </ol>
-              </div>
+            {!showAllPriorities && (
+              <button type="button" onClick={() => setShowAllPriorities(true)} className="text-sm font-semibold text-navy underline">
+                + Ver más opciones
+              </button>
             )}
+            <p className="text-sm text-muted">Elegí todas las que quieras: lo que más repitas en tus respuestas es lo que más pesa en la recomendación.</p>
           </div>
         )}
 
-        {S.key === "history" && (
+        {stepHas(step, "history") && (
           <div className="space-y-6">
-            <TagInput label="Lugares que ya visitaste" hint="Ciudades, países o regiones." values={a.history.visited} onChange={(v) => set("history", { ...a.history, visited: v })} />
-            <TagInput label="Los que más te gustaron" values={a.history.loved} onChange={(v) => set("history", { ...a.history, loved: v })} />
-            <TagInput label="Lugares a los que no volverías" values={a.history.wouldNotReturn} onChange={(v) => set("history", { ...a.history, wouldNotReturn: v })} />
-            <TagInput label="Destinos pendientes que te gustaría conocer" values={a.history.pending} onChange={(v) => set("history", { ...a.history, pending: v })} />
-            <TagInput label="Lugares que preferís evitar" values={a.history.avoid} onChange={(v) => set("history", { ...a.history, avoid: v })} />
-            <Field label="¿Qué experiencias te gustaría repetir?" htmlFor="repeat">
-              <input id="repeat" className={inputClass} maxLength={400} value={a.history.repeatExperiences ?? ""} onChange={(e) => set("history", { ...a.history, repeatExperiences: e.target.value })} placeholder="Ej.: navegar, comer en mercados, hacer trekking…" />
-            </Field>
-            {!a.history.visited.length && <p className="text-sm text-muted">¿Es tu primer gran viaje? Perfecto: armamos una primera experiencia desde cero.</p>}
+            <TagInput label="🗺️ Lugares que ya conocés" hint="Ciudades o países. Así no te recomendamos lo mismo de siempre." values={a.history.visited} onChange={(v) => set("history", { ...a.history, visited: v })} />
+            <TagInput label="🚫 Lugares que no te interesan" hint="Nunca te los vamos a recomendar." values={a.history.avoid} onChange={(v) => set("history", { ...a.history, avoid: v })} />
           </div>
         )}
 
-        {S.key === "stay" && (
+        {stepHas(step, "stay") && (
           <div className="space-y-6">
             <Field label="Tipo de alojamiento que preferís" hint="Podés elegir varios.">
               <div className="flex flex-wrap gap-2">
@@ -863,35 +783,13 @@ export function Wizard({
                 })}
               </div>
             </Field>
-            <Field label="Medios de transporte que te resultan cómodos">
-              <div className="flex flex-wrap gap-2">
-                {(Object.keys(TRANSPORT_LABELS) as TransportMode[]).map((k) => {
-                  const on = a.stay.transport.includes(k);
-                  return (
-                    <button key={k} type="button" aria-pressed={on} onClick={() => set("stay", { ...a.stay, transport: toggle(a.stay.transport, k) })} className={cx("rounded-full border px-3.5 py-2 text-sm font-semibold", on ? "border-cyan-brand bg-cyan-brand text-white" : "border-line bg-white text-navy")}>
-                      <span aria-hidden>{TRANSPORT_EMOJI[k]}</span> {TRANSPORT_LABELS[k]}
-                    </button>
-                  );
-                })}
-              </div>
-            </Field>
-            <Field label="En el alojamiento, ¿qué priorizás?" htmlFor="lp">
-              <select id="lp" className={inputClass} value={a.stay.lodgingPriority ?? "location"} onChange={(e) => set("stay", { ...a.stay, lodgingPriority: e.target.value as IntakeAnswers["stay"]["lodgingPriority"] })}>
-                <option value="price">Precio</option>
-                <option value="location">Ubicación</option>
-                <option value="comfort">Comodidad</option>
-                <option value="views">Vistas</option>
-                <option value="services">Servicios (pileta, spa, etc.)</option>
-                <option value="experience">Que sea una experiencia en sí</option>
-              </select>
-            </Field>
             <label className="flex items-center gap-2 text-sm">
               <input type="checkbox" checked={!!a.stay.noCarRental} onChange={(e) => set("stay", { ...a.stay, noCarRental: e.target.checked })} /> No quiero alquilar auto
             </label>
           </div>
         )}
 
-        {S.key === "smart" && (
+        {stepHas(step, "smart") && (
           <div className="space-y-6">
             {questions === null && (
               <p className="flex items-center gap-2 text-muted">

@@ -33,7 +33,8 @@ export async function interpretDream(text: string): Promise<DreamResult | null> 
         {
           role: "system",
           content: `Interpretás pedidos de viaje escritos por clientes de una agencia argentina. Devolvé SOLO un objeto JSON con estas claves:
-destinations: ids de la lista de destinos que la persona pide o describe (por ejemplo "la ciudad de los canales" → venecia); no agregues destinos que no mencionó,
+destinations: ids de la lista de destinos que la persona QUIERE o describe (por ejemplo "la ciudad de los canales" → venecia); no agregues destinos que no mencionó,
+avoid: ids de destinos que la persona dice que NO quiere, que no le interesan o que ya conoce y no quiere repetir ("no me interesa París" → paris). Un destino en avoid nunca va en destinations,
 countries: códigos de país (de la lista) si pide un país completo ("Italia" → IT),
 nights: número de noches (21 días = 20 noches) o null,
 months: meses del viaje (1-12),
@@ -56,7 +57,8 @@ ${catalog}`,
       source = "ai";
       reading = {
         ...ai,
-        destinations: [...new Set([...ai.destinations, ...rules.destinations])],
+        avoid: [...new Set([...ai.avoid, ...rules.avoid])],
+        destinations: [...new Set([...ai.destinations, ...rules.destinations])].filter((id) => !ai.avoid.includes(id) && !rules.avoid.includes(id)),
         countries: [...new Set([...ai.countries, ...rules.countries])],
         nights: ai.nights ?? rules.nights,
         months: ai.months.length ? ai.months : rules.months,

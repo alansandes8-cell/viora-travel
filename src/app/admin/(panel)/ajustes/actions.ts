@@ -143,3 +143,19 @@ export async function testPdf() {
   await setSetting("last_pdf_test", result);
   revalidatePath("/admin/ajustes");
 }
+
+/** Valores de referencia del costo aproximado (vuelos por región y hotel por nivel de costo). */
+export async function saveTripEstimate(fd: FormData) {
+  const staff = await requireStaff("owner");
+  const { DEFAULT_TRIP_ESTIMATE } = await import("@/core/trip-estimate");
+  const num = (k: string, def: number) => {
+    const v = Number(fd.get(k));
+    return Number.isFinite(v) && v > 0 && v < 50000 ? Math.round(v) : def;
+  };
+  const flights = Object.fromEntries(Object.entries(DEFAULT_TRIP_ESTIMATE.flights).map(([r, [l, h]]) => [r, [num(`f-${r}-l`, l), num(`f-${r}-h`, h)]]));
+  const hotel = DEFAULT_TRIP_ESTIMATE.hotel.map(([l, h], i) => [num(`h-${i}-l`, l), num(`h-${i}-h`, h)] as [number, number]);
+  const table = { ...DEFAULT_TRIP_ESTIMATE, flights, hotel };
+  await setSetting("trip_estimate", table);
+  await logActivity("settings.trip_estimate", { actorKind: "staff", actorId: staff.id, details: { flights, hotel } });
+  revalidatePath("/admin/ajustes");
+}

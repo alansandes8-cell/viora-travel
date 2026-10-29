@@ -31,8 +31,9 @@ test.describe("Experiencia del cliente", () => {
     expect(res?.status()).toBe(200);
     expect(await textWithoutDailySpend(p2)).not.toMatch(MONEY_VISIBLE);
     // Los gastos diarios orientativos sí se muestran, sin el presupuesto que indicó el cliente.
-    await expect(p2.locator("[data-daily-spend]")).toContainText("por día");
-    expect(await p2.locator("[data-daily-spend]").innerText()).not.toMatch(/4321|4\.321/);
+    await expect(p2.locator("[data-daily-spend]").filter({ hasText: "Gastos diarios" })).toContainText("por día");
+    await expect(p2.locator("[data-daily-spend]").filter({ hasText: "Costo aproximado" })).toContainText("Total estimado por persona");
+    for (const t of await p2.locator("[data-daily-spend]").allInnerTexts()) expect(t).not.toMatch(/4321|4\.321/);
     const html = await res!.text();
     expect(html).not.toContain("4321");
     expect(html).not.toMatch(/budget_hints|marginPercent|unitAmount|price_observations/);
@@ -90,7 +91,7 @@ test.describe("Experiencia del cliente", () => {
   test("buscador de aeropuertos en «¿Desde dónde salís?»", async ({ page }) => {
     await page.goto("/planificar");
     await page.getByRole("button", { name: /Relax y playa/ }).click();
-    for (let i = 0; i < 3; i++) await page.getByRole("button", { name: "Siguiente" }).click();
+    for (let i = 0; i < 2; i++) await page.getByRole("button", { name: "Siguiente" }).click();
     await page.locator("#origin-search").fill("montev");
     await page.getByRole("option", { name: /Montevideo/ }).first().click();
     await expect(page.getByText(/Salís desde/)).toContainText("Montevideo");

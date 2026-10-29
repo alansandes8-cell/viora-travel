@@ -23,3 +23,9 @@ export async function videosFor(query: string, count = 3): Promise<{ items: Medi
     return { items: [], configured: true };
   }
 }
+
+/** Primera foto real disponible entre varias búsquedas (en orden de preferencia). */
+export async function firstImage(queries: string[]): Promise<MediaItem | null> {
+  const results = await Promise.all(queries.map((q) => imagesFor(q, 1)));
+  return results.find((r) => r.length > 0)?.[0] ?? null;
+}

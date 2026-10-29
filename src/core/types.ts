@@ -310,6 +310,8 @@ export interface TravelerProfile {
   wishRegions: string[]; // superregiones deseadas
   /** Países pedidos explícitamente («21 días en Italia»): las alternativas se limitan a ellos. */
   wishCountries?: string[];
+  /** Intereses que la persona repitió en varias respuestas (estilo, prioridades, juego, texto): mandan en la recomendación. */
+  strongIntents?: Interest[];
   /** Experiencias concretas pedidas (trekking, buceo, vinos…): ver core/experiences. */
   experiences?: string[];
   effortCap: 1 | 2 | 3;
@@ -508,6 +510,8 @@ export interface PlanDocument {
   checks: ValidationIssue[];
   /** Gastos diarios orientativos por parada (referencia de la agencia, sin alojamiento ni vuelos). */
   dailySpend?: { stopId: string; name: string; nights: number; low: number; high: number; currency: "USD" | "EUR" }[];
+  /** Costo aproximado por persona (vuelos + alojamiento + traslados), estimación de referencia. */
+  tripEstimate?: import("./trip-estimate").TripEstimate | null;
   pendingInfo: string[];
   entryRequirements: { country: string; items: Claim<string>[]; links: { label: string; url: string }[] }[];
 }

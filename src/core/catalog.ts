@@ -7,30 +7,32 @@ export interface TripStyleDef {
   hint: string;
   /** Lugar emblemático que representa el estilo (título de Wikipedia en inglés): da fotos reales y precisas. */
   imageQuery: string;
+  /** Lugares para la foto de la categoría, en orden: se usa el primero que tenga foto real. */
+  photoSpots: string[];
   accent: "teal" | "orange" | "coral" | "purple" | "cyan";
   interests: InterestVector; // 0..1
   shape: "single" | "multi" | "open";
 }
 
 export const TRIP_STYLE_DEFS: TripStyleDef[] = [
-  { id: "beach_relax", emoji: "🏝️", label: "Relax y playa", hint: "Arena, mar y descanso", imageQuery: "Baía do Sancho", accent: "cyan", interests: { beach: 1, relax: 1 }, shape: "single" },
-  { id: "eurotrip", emoji: "🚆", label: "Eurotrip", hint: "Varias ciudades y países", imageQuery: "Old Town Square", accent: "purple", interests: { culture: 0.9, iconic: 0.9, architecture: 0.8, history: 0.7 }, shape: "multi" },
-  { id: "big_cities", emoji: "🏙️", label: "Grandes ciudades", hint: "Íconos urbanos y vida de ciudad", imageQuery: "Times Square", accent: "purple", interests: { iconic: 1, culture: 0.7, shopping: 0.5, nightlife: 0.5, gastronomy: 0.6 }, shape: "multi" },
-  { id: "nature_adventure", emoji: "🏔️", label: "Naturaleza y aventura", hint: "Paisajes, trekking y aire libre", imageQuery: "Fitz Roy", accent: "teal", interests: { nature: 1, adventure: 0.9 }, shape: "open" },
-  { id: "romantic", emoji: "💑", label: "Viaje romántico", hint: "Pueblos, atardeceres y buena mesa", imageQuery: "Oia, Greece", accent: "coral", interests: { romance: 1, gastronomy: 0.7, relax: 0.5 }, shape: "open" },
-  { id: "honeymoon", emoji: "💍", label: "Luna de miel", hint: "Un viaje para recordar siempre", imageQuery: "Maafushi", accent: "coral", interests: { romance: 1, relax: 0.8, beach: 0.6, luxury: 0.5 }, shape: "open" },
-  { id: "family", emoji: "👨‍👩‍👧", label: "Viaje familiar", hint: "Planes para grandes y chicos", imageQuery: "Cinderella Castle", accent: "orange", interests: { family: 1, beach: 0.4, themeparks: 0.4 }, shape: "single" },
-  { id: "theme_parks", emoji: "🎢", label: "Parques temáticos", hint: "Magia, montañas rusas y shows", imageQuery: "Magic Kingdom", accent: "purple", interests: { themeparks: 1, family: 0.7 }, shape: "single" },
-  { id: "culture_history", emoji: "🏛️", label: "Cultura e historia", hint: "Museos, ruinas y patrimonio", imageQuery: "Colosseum", accent: "orange", interests: { culture: 1, history: 1, architecture: 0.7 }, shape: "multi" },
-  { id: "gastronomy", emoji: "🍝", label: "Gastronomía y experiencias locales", hint: "Mercados, vinos y cocina local", imageQuery: "La Boqueria", accent: "orange", interests: { gastronomy: 1, wine: 0.6, offbeat: 0.4 }, shape: "open" },
-  { id: "luxury", emoji: "✨", label: "Lujo y exclusividad", hint: "Servicio impecable y lugares únicos", imageQuery: "Burj Al Arab", accent: "purple", interests: { luxury: 1, relax: 0.6, wellness: 0.6 }, shape: "open" },
-  { id: "backpacker", emoji: "🎒", label: "Mochilero y bajo presupuesto", hint: "Más lugares, menos gasto", imageQuery: "Khaosan Road", accent: "teal", interests: { adventure: 0.6, offbeat: 0.7, nightlife: 0.4 }, shape: "multi" },
-  { id: "cruise", emoji: "🛳️", label: "Cruceros", hint: "Varios destinos sin cambiar de cuarto", imageQuery: "Cruise ship", accent: "cyan", interests: { relax: 0.7, beach: 0.5, iconic: 0.4 }, shape: "single" },
-  { id: "shopping", emoji: "🛍️", label: "Viaje de compras", hint: "Outlets, tiendas y ciudad", imageQuery: "Fifth Avenue", accent: "coral", interests: { shopping: 1, iconic: 0.4 }, shape: "single" },
-  { id: "exotic", emoji: "🌏", label: "Destinos exóticos", hint: "Culturas y paisajes distintos", imageQuery: "Wat Arun", accent: "teal", interests: { offbeat: 1, culture: 0.7, nature: 0.5 }, shape: "open" },
-  { id: "road_trip", emoji: "🚗", label: "Road trip", hint: "La ruta como parte del viaje", imageQuery: "Quebrada de Humahuaca", accent: "orange", interests: { nature: 0.8, adventure: 0.6, offbeat: 0.5 }, shape: "multi" },
-  { id: "mixed", emoji: "🎨", label: "Combinación de estilos", hint: "Un poco de todo", imageQuery: "Christ the Redeemer (statue)", accent: "cyan", interests: { beach: 0.5, culture: 0.5, nature: 0.5 }, shape: "open" },
-  { id: "discover", emoji: "🧭", label: "Todavía no lo sé", hint: "Quiero descubrir opciones", imageQuery: "Iguazu Falls", accent: "teal", interests: {}, shape: "open" },
+  { id: "beach_relax", emoji: "🏝️", label: "Relax y playa", hint: "Arena, mar y descanso", imageQuery: "Baía do Sancho", photoSpots: ["Baía do Sancho", "Eagle Beach", "Grace Bay"], accent: "cyan", interests: { beach: 1, relax: 1 }, shape: "single" },
+  { id: "eurotrip", emoji: "🚆", label: "Eurotrip", hint: "Varias ciudades y países", imageQuery: "Charles Bridge", photoSpots: ["Charles Bridge", "Ponte Vecchio", "Old Town Square", "Pont Alexandre III"], accent: "purple", interests: { culture: 0.9, iconic: 0.9, architecture: 0.8, history: 0.7 }, shape: "multi" },
+  { id: "big_cities", emoji: "🏙️", label: "Grandes ciudades", hint: "Íconos urbanos y vida de ciudad", imageQuery: "Times Square", photoSpots: ["Times Square", "Shibuya Crossing", "Tower Bridge"], accent: "purple", interests: { iconic: 1, culture: 0.7, shopping: 0.5, nightlife: 0.5, gastronomy: 0.6 }, shape: "multi" },
+  { id: "nature_adventure", emoji: "🏔️", label: "Naturaleza y aventura", hint: "Paisajes, trekking y aire libre", imageQuery: "Perito Moreno Glacier", photoSpots: ["Perito Moreno Glacier", "Fitz Roy", "Lake Bled", "Moraine Lake"], accent: "teal", interests: { nature: 1, adventure: 0.9 }, shape: "open" },
+  { id: "romantic", emoji: "💑", label: "Viaje romántico", hint: "Pueblos, atardeceres y buena mesa", imageQuery: "Oia, Greece", photoSpots: ["Oia, Greece", "Positano", "Grand Canal (Venice)"], accent: "coral", interests: { romance: 1, gastronomy: 0.7, relax: 0.5 }, shape: "open" },
+  { id: "honeymoon", emoji: "💍", label: "Luna de miel", hint: "Un viaje para recordar siempre", imageQuery: "Bora Bora", photoSpots: ["Bora Bora", "Overwater bungalow", "Oia, Greece"], accent: "coral", interests: { romance: 1, relax: 0.8, beach: 0.6, luxury: 0.5 }, shape: "open" },
+  { id: "family", emoji: "👨‍👩‍👧", label: "Viaje familiar", hint: "Planes para grandes y chicos", imageQuery: "Cinderella Castle", photoSpots: ["Cinderella Castle", "Walt Disney World", "Magic Kingdom"], accent: "orange", interests: { family: 1, beach: 0.4, themeparks: 0.4 }, shape: "single" },
+  { id: "theme_parks", emoji: "🎢", label: "Parques temáticos", hint: "Magia, montañas rusas y shows", imageQuery: "Universal Studios Florida", photoSpots: ["Universal Studios Florida", "Islands of Adventure", "Epcot", "Magic Kingdom"], accent: "purple", interests: { themeparks: 1, family: 0.7 }, shape: "single" },
+  { id: "culture_history", emoji: "🏛️", label: "Cultura e historia", hint: "Museos, ruinas y patrimonio", imageQuery: "Colosseum", photoSpots: ["Colosseum", "Machu Picchu", "Acropolis of Athens"], accent: "orange", interests: { culture: 1, history: 1, architecture: 0.7 }, shape: "multi" },
+  { id: "gastronomy", emoji: "🍝", label: "Gastronomía y experiencias locales", hint: "Mercados, vinos y cocina local", imageQuery: "La Boqueria", photoSpots: ["La Boqueria", "Mercado de San Miguel", "Tsukiji fish market"], accent: "orange", interests: { gastronomy: 1, wine: 0.6, offbeat: 0.4 }, shape: "open" },
+  { id: "luxury", emoji: "✨", label: "Lujo y exclusividad", hint: "Servicio impecable y lugares únicos", imageQuery: "Burj Al Arab", photoSpots: ["Burj Al Arab", "Positano", "Monte Carlo"], accent: "purple", interests: { luxury: 1, relax: 0.6, wellness: 0.6 }, shape: "open" },
+  { id: "backpacker", emoji: "🎒", label: "Mochilero y bajo presupuesto", hint: "Más lugares, menos gasto", imageQuery: "Khaosan Road", photoSpots: ["Khaosan Road", "Machu Picchu", "Phi Phi Islands"], accent: "teal", interests: { adventure: 0.6, offbeat: 0.7, nightlife: 0.4 }, shape: "multi" },
+  { id: "cruise", emoji: "🛳️", label: "Cruceros", hint: "Varios destinos sin cambiar de cuarto", imageQuery: "Cruise ship", photoSpots: ["Cruise ship", "Santorini", "Dubrovnik"], accent: "cyan", interests: { relax: 0.7, beach: 0.5, iconic: 0.4 }, shape: "single" },
+  { id: "shopping", emoji: "🛍️", label: "Viaje de compras", hint: "Outlets, tiendas y ciudad", imageQuery: "Fifth Avenue", photoSpots: ["Fifth Avenue", "Times Square", "The Dubai Mall"], accent: "coral", interests: { shopping: 1, iconic: 0.4 }, shape: "single" },
+  { id: "exotic", emoji: "🌏", label: "Destinos exóticos", hint: "Culturas y paisajes distintos", imageQuery: "Wat Arun", photoSpots: ["Wat Arun", "Tanah Lot", "Fushimi Inari-taisha"], accent: "teal", interests: { offbeat: 1, culture: 0.7, nature: 0.5 }, shape: "open" },
+  { id: "road_trip", emoji: "🚗", label: "Road trip", hint: "La ruta como parte del viaje", imageQuery: "Quebrada de Humahuaca", photoSpots: ["Quebrada de Humahuaca", "Argentine National Route 40", "U.S. Route 66"], accent: "orange", interests: { nature: 0.8, adventure: 0.6, offbeat: 0.5 }, shape: "multi" },
+  { id: "mixed", emoji: "🎨", label: "Combinación de estilos", hint: "Un poco de todo", imageQuery: "Christ the Redeemer (statue)", photoSpots: ["Christ the Redeemer (statue)", "Sugarloaf Mountain", "Rio de Janeiro"], accent: "cyan", interests: { beach: 0.5, culture: 0.5, nature: 0.5 }, shape: "open" },
+  { id: "discover", emoji: "🧭", label: "Todavía no lo sé", hint: "Quiero descubrir opciones", imageQuery: "Iguazu Falls", photoSpots: ["Iguazu Falls", "Perito Moreno Glacier", "Machu Picchu"], accent: "teal", interests: {}, shape: "open" },
 ];
 
 export const TRIP_STYLE_BY_ID = Object.fromEntries(TRIP_STYLE_DEFS.map((s) => [s.id, s])) as Record<TripStyle, TripStyleDef>;

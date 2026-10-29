@@ -1,4 +1,5 @@
 import { dailySpendFor, type DailySpendTable } from "./daily-spend";
+import { estimateTrip, type TripEstimateTable } from "./trip-estimate";
 import { BASE_WEIGHTS, BUDGET_REGION_HINTS, MONTHS_ES } from "./catalog";
 import { generateCandidates, tripNights, type Candidate } from "./candidates";
 import { buildItinerary, newId } from "./itinerary";
@@ -25,6 +26,8 @@ export interface PlanContext {
   now?: Date;
   /** Tabla de gastos diarios orientativos de la agencia (Ajustes). */
   dailySpend?: DailySpendTable;
+  /** Tabla de costos de referencia para el costo total aproximado (Ajustes). */
+  tripEstimate?: TripEstimateTable;
 }
 
 interface Scored extends Candidate {
@@ -292,6 +295,7 @@ export function refreshDerived(doc: PlanDocument, ctx: PlanContext): void {
     const d = ctx.library.find((x) => x.id === s.destinationId);
     return d ? [{ stopId: s.id, name: s.name, nights: s.nights, ...dailySpendFor(d, profile.budgetTier, ctx.dailySpend) }] : [];
   });
+  doc.tripEstimate = estimateTrip(it, profile, ctx.library, ctx.tripEstimate);
   const countries = new Map<string, string>();
   for (const s of it.stops) {
     const d = ctx.library.find((x) => x.id === s.destinationId);

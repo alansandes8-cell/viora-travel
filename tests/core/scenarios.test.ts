@@ -468,3 +468,68 @@ describe("Gastos diarios orientativos", () => {
     expect(lux.dailySpend![0].low).toBeGreaterThan(doc.dailySpend![0].low);
   });
 });
+
+describe("Coherencia con lo que pide la persona (ronda 4)", () => {
+  const ids = (doc: PlanDocument) => doc.alternatives.flatMap((a) => a.stops.map((s) => s.destinationId!));
+  it("«Francia 15 días, pero no me interesa París»: solo Francia y nunca París, aunque la IA lo sugiera", async () => {
+    const { readDreamRules, applyReading } = await import("@/core/dream");
+    const t = "quiero conocer francia en 15 días, pero no me interesa París";
+    const r = readDreamRules(t, lib);
+    expect(r.avoid).toContain("paris");
+    // Simula una IA que se equivoca y propone París: el «no» igual gana.
+    const a = applyReading(answers({ dreamText: t }), { ...r, destinations: ["paris"] });
+    a.extra = { ...a.extra, ai_wish: ["paris"] };
+    const doc = generatePlan(a, ctx);
+    expect(doc.alternatives.length).toBeGreaterThan(0);
+    expect(ids(doc)).not.toContain("paris");
+    ids(doc).forEach((id) => expect(lib.find((d) => d.id === id)!.countryCode).toBe("FR"));
+  });
+  it("compras elegidas en estilo, prioridades y juego: Orlando/Miami/Nueva York, con días de compras y tiendas reales", () => {
+    const a = answers({
+      tripStyles: ["shopping"],
+      priorities: { selected: ["shopping"], ranking: ["shopping"], mustHave: ["shopping"] },
+      extra: { tot_day: "b" },
+      dates: { mode: "month", months: [3], nights: 10 },
+    });
+    const doc = generatePlan(a, ctx);
+    expect(doc.profile.strongIntents).toContain("shopping");
+    const usAlts = doc.alternatives.filter((alt) => alt.stops.some((s) => ["orlando", "miami", "nueva-york"].includes(s.destinationId!)));
+    expect(usAlts.length).toBeGreaterThanOrEqual(2);
+    expect(doc.alternatives[0].stops.some((s) => ["orlando", "miami"].includes(s.destinationId!))).toBe(true);
+    const us = doc.alternatives.find((x) => x.stops.some((s) => s.destinationId === "orlando" || s.destinationId === "miami"))!;
+    expect(us).toBeTruthy();
+    const chosen = selectAlternative(structuredClone(doc), us.id, a, ctx);
+    const acts = chosen.itinerary!.days.flatMap((d) => d.activities.map((x) => x.name)).join(" | ");
+    expect(acts).toMatch(/Ross|Marshalls|Outlets|Sawgrass|Dolphin/);
+  });
+  it("playa repetida en varias respuestas: solo destinos de playa", () => {
+    const a = answers({ tripStyles: ["beach_relax"], priorities: { selected: ["quiet_beaches"], ranking: [], mustHave: [] }, extra: { tot_scene: "a" }, dates: { mode: "month", months: [1], nights: 10 } });
+    const doc = generatePlan(a, ctx);
+    doc.alternatives.forEach((alt) => {
+      const main = alt.stops.reduce((x, y) => (y.nights > x.nights ? y : x));
+      expect(lib.find((d) => d.id === main.destinationId)!.tags.beach ?? 0).toBeGreaterThanOrEqual(2);
+    });
+  });
+});
+
+describe("Costo aproximado del viaje", () => {
+  it("Italia 20 noches desde Buenos Aires: vuelos + alojamiento + traslados, por persona, sin el presupuesto del cliente", () => {
+    const a = answers({ dreamText: "21 días recorriendo Italia", dates: { mode: "month", months: [5], nights: 20 } });
+    const d0 = generatePlan(a, ctx);
+    const doc = selectAlternative(d0, d0.alternatives[0].id, a, ctx);
+    const e = doc.tripEstimate!;
+    expect(e.includesFlights).toBe(true);
+    expect(e.flights[0]).toBeGreaterThanOrEqual(1000);
+    expect(e.lodging[0]).toBeGreaterThan(0);
+    expect(e.total[0]).toBe(Math.round((e.flights[0] + e.lodging[0] + e.transfers[0]) / 50) * 50 || e.total[0]);
+    expect(e.total[1]).toBeGreaterThan(e.total[0]);
+    const p = toClientProposal(doc, "preliminary");
+    expect(p.tripEstimate?.total).toEqual(e.total);
+    expect(scanForMoney(p)).toEqual([]);
+    // Temporada alta (julio) encarece los vuelos.
+    const b = { ...a, dates: { mode: "month" as const, months: [7], nights: 20 } };
+    const d1 = generatePlan(b, ctx);
+    const peak = selectAlternative(d1, d1.alternatives[0].id, b, ctx).tripEstimate!;
+    expect(peak.flights[1]).toBeGreaterThan(e.flights[1]);
+  });
+});

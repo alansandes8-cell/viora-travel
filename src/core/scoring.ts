@@ -166,6 +166,7 @@ export function affinityOf(dest: Destination, profile: TravelerProfile): number 
   }
   let s = (num / den) * 10;
   if (profile.wishIds.includes(dest.id)) s += 2.5;
+  for (const i of profile.strongIntents ?? []) s += ((dest.tags[i] ?? 0) - 1.5) * 1.2; // lo que más pidió pesa más
   const wanted = profile.experiences ?? [];
   if (wanted.length) {
     const offered = destinationOffers(dest, wanted);

@@ -2,7 +2,7 @@ import "server-only";
 import { PHOTO_SPOTS } from "@/core/library/photo-spots";
 import type { ClientProposal } from "@/core/sanitize";
 import type { MediaItem } from "./integrations/media";
-import { imagesFor, videosFor } from "./media-helpers";
+import { firstImage, imagesFor, videosFor } from "./media-helpers";
 import { loadLibrary } from "./settings";
 
 /** Lugares a fotografiar de un destino: sus lugares emblemáticos o, si no hay, su búsqueda de imagen. */
@@ -11,6 +11,13 @@ export async function photoQueriesFor(stopName: string, country: string): Promis
   const spots = dest?.photoSpots ?? (dest ? PHOTO_SPOTS[dest.id] : undefined);
   if (spots?.length) return spots;
   return [dest?.imageQuery ?? `${stopName} ${country}`];
+}
+
+/** Foto de portada de una alternativa: la primera foto real entre los lugares emblemáticos de su destino principal. */
+export async function coverPhoto(stopName: string, country: string, fallbackQuery?: string): Promise<MediaItem[]> {
+  const queries = await photoQueriesFor(stopName, country);
+  const img = await firstImage(fallbackQuery && !queries.includes(fallbackQuery) ? [...queries, fallbackQuery] : queries);
+  return img ? [img] : [];
 }
 
 /** Hasta `count` fotos de un destino, una por lugar emblemático (sin repetir). */

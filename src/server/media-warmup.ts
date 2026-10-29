@@ -20,7 +20,7 @@ export interface WarmResult {
 async function allTitles(): Promise<string[]> {
   const library = await loadLibrary();
   const spots = library.flatMap((d) => d.photoSpots ?? PHOTO_SPOTS[d.id] ?? []);
-  return [...new Set([...HERO_SPOTS, ...TRIP_STYLE_DEFS.map((s) => s.imageQuery), ...spots])];
+  return [...new Set([...HERO_SPOTS, ...TRIP_STYLE_DEFS.flatMap((s) => s.photoSpots), ...spots])];
 }
 
 /**

@@ -14,7 +14,9 @@ import { chromiumPath } from "@/server/pdf";
 import { getSetting } from "@/server/settings";
 import { llmConfigured, llmProvider } from "@/server/ai/llm";
 import { DEFAULT_DAILY_SPEND, type DailySpendTable } from "@/core/daily-spend";
-import { confirmTotp, createUser, purgeExpired, refreshPhotos, saveDailySpend, testPdf, renameStatus, saveGeneral, saveWeights, startTotp, toggleUser } from "./actions";
+import { DEFAULT_TRIP_ESTIMATE, type TripEstimateTable } from "@/core/trip-estimate";
+import { SUPER_REGION_LABEL } from "@/core/library";
+import { confirmTotp, createUser, purgeExpired, refreshPhotos, saveDailySpend, saveTripEstimate, testPdf, renameStatus, saveGeneral, saveWeights, startTotp, toggleUser } from "./actions";
 
 export const metadata = { title: "Ajustes" };
 
@@ -37,6 +39,7 @@ export default async function AjustesPage() {
       .where(eq(schema.mediaQueries.provider, "wikipedia")),
   ]);
   const spend = await getSetting<DailySpendTable>("daily_spend", DEFAULT_DAILY_SPEND);
+  const est = await getSetting<TripEstimateTable>("trip_estimate", DEFAULT_TRIP_ESTIMATE);
   const pdfTest = await getSetting<{ ok: boolean; detail: string; at: string } | null>("last_pdf_test", null);
   const photosOk = photoCount.filter((r) => r.ok === "ok").length;
   const photosFail = photoCount.filter((r) => r.ok !== "ok").length;
@@ -99,6 +102,56 @@ export default async function AjustesPage() {
           )}
           <form action={testPdf} className="mt-3">
             <button className={smallBtn}>Probar PDF ahora</button>
+          </form>
+        </Panel>
+        <Panel title="Costo aproximado del viaje (se muestra al cliente)" className="xl:col-span-2">
+          <p className="text-sm text-muted">Valores promedio de referencia en US$ para nivel «moderado». El sistema los ajusta por nivel de viaje, temporada alta (enero, julio y diciembre) y cantidad de viajeros. Actualizalos cuando cambien los precios del mercado.</p>
+          <form action={saveTripEstimate} className="mt-3 grid gap-6 lg:grid-cols-2">
+            <table className="text-sm">
+              <thead>
+                <tr className="text-left text-xs text-muted">
+                  <th className="pr-3">Vuelo ida y vuelta desde Argentina, por persona</th>
+                  <th className="pr-3">mín.</th>
+                  <th>máx.</th>
+                </tr>
+              </thead>
+              <tbody>
+                {Object.keys(DEFAULT_TRIP_ESTIMATE.flights).map((r) => (
+                  <tr key={r}>
+                    <td className="pr-3 font-semibold text-navy">{SUPER_REGION_LABEL[r] ?? r}</td>
+                    {[0, 1].map((j) => (
+                      <td key={j} className="py-1 pr-3">
+                        <input name={`f-${r}-${j === 0 ? "l" : "h"}`} type="number" min={1} defaultValue={est.flights[r]?.[j] ?? DEFAULT_TRIP_ESTIMATE.flights[r][j]} className={`${smallInput} w-24`} aria-label={`Vuelo ${r} ${j === 0 ? "mínimo" : "máximo"}`} />
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <div>
+              <table className="text-sm">
+                <thead>
+                  <tr className="text-left text-xs text-muted">
+                    <th className="pr-3">Hotel por noche (habitación doble)</th>
+                    <th className="pr-3">mín.</th>
+                    <th>máx.</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {[0, 1, 2, 3, 4].map((i) => (
+                    <tr key={i}>
+                      <td className="pr-3 font-semibold text-navy">{["1 · Económico", "2", "3 · Medio", "4", "5 · Muy caro"][i]}</td>
+                      {[0, 1].map((j) => (
+                        <td key={j} className="py-1 pr-3">
+                          <input name={`h-${i}-${j === 0 ? "l" : "h"}`} type="number" min={1} defaultValue={est.hotel[i]?.[j] ?? DEFAULT_TRIP_ESTIMATE.hotel[i][j]} className={`${smallInput} w-24`} aria-label={`Hotel nivel ${i + 1} ${j === 0 ? "mínimo" : "máximo"}`} />
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {owner && <button className={`${smallBtn} mt-3`}>Guardar valores</button>}
+            </div>
           </form>
         </Panel>
         <Panel title="Gastos diarios orientativos (se muestran al cliente)">

@@ -6,6 +6,8 @@ import type { Destination, IntakeAnswers, PartyType, TripStyle } from "./types";
 /** Lo que se entendió del texto libre, listo para completar el cuestionario. */
 export interface DreamReading {
   destinations: string[]; // ids de la biblioteca
+  /** Lo que dijo que NO quiere («no me interesa París»): siempre se excluye. */
+  avoid: string[];
   countries: string[]; // códigos ISO de países de la biblioteca
   nights?: number;
   months: number[];
@@ -35,6 +37,7 @@ export function readDreamRules(text: string, library: Destination[]): DreamReadi
   if (/\b(luna de miel)\b/.test(t)) styles.push("honeymoon");
   return {
     destinations: mentions.wish,
+    avoid: mentions.avoid,
     countries: mentions.wishCountries,
     nights: extractNights(text) ?? undefined,
     months,
@@ -53,8 +56,10 @@ export function sanitizeReading(r: Partial<DreamReading>, library: Destination[]
   const styleIds = new Set(TRIP_STYLE_DEFS.map((s) => s.id));
   const expIds = new Set(EXPERIENCES.map((e) => e.id));
   const n = Number(r.nights);
+  const avoid = (r.avoid ?? []).filter((x) => ids.has(x)).slice(0, 12);
   return {
-    destinations: (r.destinations ?? []).filter((x) => ids.has(x)).slice(0, 8),
+    destinations: (r.destinations ?? []).filter((x) => ids.has(x) && !avoid.includes(x)).slice(0, 8),
+    avoid,
     countries: (r.countries ?? []).map((c) => String(c).toUpperCase()).filter((c) => ccs.has(c)).slice(0, 5),
     nights: Number.isFinite(n) && n >= 1 && n <= 90 ? Math.round(n) : undefined,
     months: (r.months ?? []).map(Number).filter((m) => m >= 1 && m <= 12).slice(0, 12),
@@ -86,6 +91,7 @@ export function applyReading(a: IntakeAnswers, r: DreamReading): IntakeAnswers {
   }
   const extra = { ...next.extra };
   if (r.destinations.length) extra.ai_wish = r.destinations;
+  if (r.avoid.length) extra.ai_avoid = r.avoid;
   if (r.countries.length) extra.ai_countries = r.countries;
   if (r.experiences.length) extra.ai_experiences = r.experiences;
   next.extra = extra;
@@ -98,6 +104,7 @@ export function readingChips(r: DreamReading, library: Destination[]): string[] 
   const countryName = (cc: string) => library.find((d) => d.countryCode === cc)?.country.split("(")[0].trim() ?? cc;
   if (r.countries.length) chips.push(`📍 ${r.countries.map(countryName).join(", ")}`);
   if (r.destinations.length) chips.push(`📍 ${r.destinations.map((id) => library.find((d) => d.id === id)?.name ?? id).join(", ")}`);
+  if (r.avoid.length) chips.push(`🚫 Sin ${r.avoid.map((id) => library.find((d) => d.id === id)?.name ?? id).join(", ")}`);
   if (r.nights) chips.push(`🌙 ${r.nights} noches`);
   if (r.months.length) chips.push(`📅 ${r.months.map((m) => MONTHS_ES[m - 1]).join(", ")}`);
   if (r.partyType) chips.push({ solo: "🧍 Viaje solo", couple: "💑 En pareja", friends: "👯 Con amigos", family: "👨‍👩‍👧 En familia", group: "🚌 En grupo", other: "✨ Otro" }[r.partyType]);

@@ -4,7 +4,7 @@ import { SmartImage } from "@/components/media/smart-image";
 import { InstallBanner } from "@/components/pwa/pwa";
 import { ACCENTS, ButtonLink, Card, Container, SectionTitle, cx } from "@/components/ui";
 import { Postcard } from "@/components/postcard";
-import { imagesFor } from "@/server/media-helpers";
+import { firstImage, imagesFor } from "@/server/media-helpers";
 import { HERO_SPOTS } from "@/server/media-warmup";
 
 export const dynamic = "force-dynamic";
@@ -30,7 +30,7 @@ const SERVICES = [
 
 export default async function HomePage() {
   const styles = TRIP_STYLE_DEFS.filter((s) => (FEATURED as readonly string[]).includes(s.id));
-  const [heroOptions, tiles] = await Promise.all([Promise.all(HERO_SPOTS.map((q) => imagesFor(q, 1))), Promise.all(styles.map((s) => imagesFor(s.imageQuery, 1)))]);
+  const [heroOptions, tiles] = await Promise.all([Promise.all(HERO_SPOTS.map((q) => imagesFor(q, 1))), Promise.all(styles.map(async (s) => [await firstImage(s.photoSpots)].filter((x) => x !== null)))]);
   const heroIndex = heroOptions.findIndex((h) => h.length > 0);
   const hero = heroIndex >= 0 ? heroOptions[heroIndex] : [];
 

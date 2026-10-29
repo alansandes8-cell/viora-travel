@@ -10,13 +10,14 @@ export async function completeBeachIntake(page: Page) {
   await page.getByRole("button", { name: "Playa", exact: true }).click();
   await page.getByRole("button", { name: "Ritmo lento", exact: true }).click();
   await page.getByRole("button", { name: "Siguiente" }).click();
+  // «¿Cuándo y desde dónde?» → «¿Con quién?» → presupuesto → «¿Qué te gusta?» → últimas preguntas
   await page.getByRole("button", { name: "febrero" }).click();
   await page.locator("#nights").fill("14");
-  for (let i = 0; i < 3; i++) await page.getByRole("button", { name: "Siguiente" }).click();
+  for (let i = 0; i < 2; i++) await page.getByRole("button", { name: "Siguiente" }).click();
   await page.locator("#amount").fill("4321");
   await page.getByRole("button", { name: "Siguiente" }).click();
   await page.getByRole("button", { name: "Descansar", exact: true }).click();
-  for (let i = 0; i < 3; i++) await page.getByRole("button", { name: "Siguiente" }).click();
+  await page.getByRole("button", { name: "Siguiente" }).click();
   await expect(page.getByRole("button", { name: /Ver mis alternativas/ })).toBeEnabled({ timeout: 15000 });
   await page.getByRole("button", { name: /Ver mis alternativas/ }).click();
   await page.waitForURL("**/viaje", { timeout: 30000 });

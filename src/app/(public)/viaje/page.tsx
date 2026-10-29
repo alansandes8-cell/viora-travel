@@ -7,6 +7,7 @@ import { Confetti } from "@/components/proposal/confetti";
 import { PersonaCard } from "@/components/proposal/persona-card";
 import { ACCENT_ORDER, ACCENTS, Badge, Button, Card, CompatibilityRing, Container, Notice, cx } from "@/components/ui";
 import { imagesFor } from "@/server/media-helpers";
+import { coverPhoto } from "@/server/proposal-media";
 import { currentProposal } from "@/server/services/client-flow";
 import { chooseAlternativeAction } from "./actions";
 
@@ -14,7 +15,12 @@ export default async function ViajePage() {
   const data = await currentProposal();
   if (!data) return null;
   const p = data.proposal;
-  const images = await Promise.all(p.alternatives.map((a) => imagesFor(a.imageQuery, 1)));
+  const images = await Promise.all(
+    p.alternatives.map((a) => {
+      const main = mainStop(a);
+      return main ? coverPhoto(main.name, main.country, a.imageQuery) : imagesFor(a.imageQuery, 1);
+    }),
+  );
 
   return (
     <Container className="py-10">

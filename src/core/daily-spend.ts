@@ -13,19 +13,20 @@ export interface DailySpendTable {
 }
 
 export const DEFAULT_DAILY_SPEND: DailySpendTable = {
+  // Referencia de la agencia: unos 70 € por persona y por día en un destino europeo de costo medio.
   USD: [
-    [25, 45],
-    [40, 65],
-    [60, 95],
-    [85, 130],
-    [120, 180],
+    [40, 60],
+    [55, 80],
+    [70, 95],
+    [85, 120],
+    [110, 160],
   ],
   EUR: [
-    [25, 40],
-    [35, 60],
-    [55, 85],
-    [80, 120],
-    [110, 165],
+    [40, 55],
+    [50, 70],
+    [60, 85],
+    [75, 105],
+    [95, 140],
   ],
   tierFactor: { backpacker: 0.7, economic: 0.85, moderate: 1, comfort: 1.25, premium: 1.6, unlimited: 2.2 },
 };

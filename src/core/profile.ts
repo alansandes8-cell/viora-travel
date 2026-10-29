@@ -1,6 +1,6 @@
 import { BUDGET_TIER_DEFS, INTEREST_LABELS, LODGING_LABELS, MONTHS_ES, ORIGIN_CITIES, PRIORITY_BY_ID, TRIP_STYLE_BY_ID } from "./catalog";
 import { SUPER_REGION } from "./library";
-import { applyThisOrThat } from "./game";
+import { THIS_OR_THAT, applyThisOrThat } from "./game";
 import { detectExperiences, EXPERIENCES } from "./experiences";
 import { classifyMentions, extractInterests, extractNights, matchCountries, matchCountryCodes, matchDestinations, matchRegions, normalize } from "./text";
 import type { Destination, InferredItem, Interest, IntakeAnswers, MissingItem, Pace, TravelerProfile } from "./types";
@@ -69,6 +69,18 @@ export function buildProfile(answers: IntakeAnswers, library: Destination[]): Tr
   if (extra.beach_vibe === "activities") bump("adventure", 0.6);
   if (extra.beach_vibe === "quiet") bump("relax", 1);
   const gamePace = applyThisOrThat(extra, bump);
+
+  // ── Intenciones fuertes: lo que aparece en dos o más respuestas distintas ──
+  const votes = new Map<Interest, number>();
+  const vote = (i: Interest, n = 1) => votes.set(i, (votes.get(i) ?? 0) + n);
+  for (const s of answers.tripStyles) for (const [k, v] of Object.entries(TRIP_STYLE_BY_ID[s]?.interests ?? {})) if ((v as number) >= 0.9) vote(k as Interest);
+  for (const p of answers.priorities.selected) for (const [k, v] of Object.entries(PRIORITY_BY_ID[p]?.interests ?? {})) if ((v as number) >= 0.8) vote(k as Interest, answers.priorities.mustHave.includes(p) ? 2 : 1);
+  for (const i of textInterests) vote(i);
+  for (const q of THIS_OR_THAT) {
+    const side = extra[q.id] === "a" ? q.a : extra[q.id] === "b" ? q.b : null;
+    for (const [k, v] of Object.entries(side?.interests ?? {})) if ((v as number) >= 0.8) vote(k as Interest);
+  }
+  const strongIntents = [...votes.entries()].filter(([i, n]) => n >= 2 && !["iconic", "culture"].includes(i)).map(([i]) => i);
 
   // ── Ritmo ──
   const pr = new Set(answers.priorities.selected);
@@ -155,7 +167,7 @@ export function buildProfile(answers: IntakeAnswers, library: Destination[]): Tr
     matchCountryCodes(v, library).forEach((cc) => visitedCountries.add(cc));
   }
   const lovedIds = answers.history.loved.flatMap((v) => matchDestinations(v, library));
-  const excluded = new Set<string>(mentions.avoid);
+  const excluded = new Set<string>([...mentions.avoid, ...asList(extra.ai_avoid).filter((id) => library.some((d) => d.id === id))]);
   for (const v of [...answers.history.wouldNotReturn, ...answers.history.avoid]) {
     matchDestinations(v, library).forEach((id) => excluded.add(id));
     matchCountries(v, library).forEach((id) => excluded.add(id));
@@ -181,7 +193,8 @@ export function buildProfile(answers: IntakeAnswers, library: Destination[]): Tr
   for (const r of asList(extra.continents)) wishRegions.add(r);
   if (answers.tripStyles.includes("eurotrip")) wishRegions.add("europa");
   if (answers.tripStyles.includes("theme_parks")) wishIds.add("orlando");
-  for (const id of wishIds) excluded.delete(id);
+  // Lo que la persona dijo que NO quiere siempre gana sobre cualquier mención o lectura de la IA.
+  for (const id of excluded) wishIds.delete(id);
   if (wishIds.size) {
     inferred.push({
       key: "wish",
@@ -278,6 +291,7 @@ export function buildProfile(answers: IntakeAnswers, library: Destination[]): Tr
     visitedIds: [...visitedIds],
     visitedCountries: [...visitedCountries],
     excludedIds: [...excluded],
+    strongIntents,
     lovedIds,
     pendingIds,
     firstTimeEurope,

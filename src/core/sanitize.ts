@@ -71,6 +71,8 @@ export interface ClientProposal {
    * nunca incluyen alojamiento, vuelos, márgenes ni el presupuesto que indicó el cliente.
    */
   dailySpend: { name: string; nights: number; low: number; high: number; currency: "USD" | "EUR" }[];
+  /** Costo aproximado por persona (también pedido por la agencia): referencia de mercado, no cotización. */
+  tripEstimate: { currency: "USD"; travelers: number; nights: number; includesFlights: boolean; flights: [number, number]; lodging: [number, number]; transfers: [number, number]; total: [number, number] } | null;
 }
 
 const MONEY_PATTERNS: RegExp[] = [
@@ -216,6 +218,12 @@ export function toClientProposal(doc: PlanDocument, status: ClientProposal["stat
     dailySpend: (doc.dailySpend ?? [])
       .filter((d) => Number.isFinite(d.low) && Number.isFinite(d.high) && d.low > 0 && d.high < 2000 && (d.currency === "USD" || d.currency === "EUR"))
       .map((d) => ({ name: d.name, nights: d.nights, low: Math.round(d.low), high: Math.round(d.high), currency: d.currency })),
+    tripEstimate: (() => {
+      const e = doc.tripEstimate;
+      const ok = (r: unknown): r is [number, number] => Array.isArray(r) && r.length === 2 && r.every((n) => Number.isFinite(n) && n >= 0 && n < 1_000_000);
+      if (!e || !ok(e.flights) || !ok(e.lodging) || !ok(e.transfers) || !ok(e.total)) return null;
+      return { currency: "USD" as const, travelers: e.travelers, nights: e.nights, includesFlights: !!e.includesFlights, flights: e.flights, lodging: e.lodging, transfers: e.transfers, total: e.total };
+    })(),
     disclaimer:
       "Propuesta orientativa generada a partir de tus respuestas. Los puntajes son recomendaciones del sistema, no garantías. El clima indicado es el habitual de la época, no un pronóstico. Horarios, disponibilidad y requisitos de viaje deben confirmarse antes de reservar.",
   };

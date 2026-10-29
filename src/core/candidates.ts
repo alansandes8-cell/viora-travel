@@ -50,6 +50,28 @@ type CandidateList = Candidate[] & { knownIncluded?: boolean; seasonRiskIncluded
  * solo si así no alcanzan las opciones se los vuelve a considerar, y se marca `seasonRiskIncluded`.
  */
 export function generateCandidates(profile: TravelerProfile, library: Destination[]): CandidateList {
+  // Lo que la persona repitió en varias respuestas (p. ej. compras) manda: primero solo destinos
+  // fuertes en eso; si no alcanzan para tres alternativas, se completa con los que lo ofrecen bien.
+  const strong = profile.strongIntents ?? [];
+  const all = generateSeasonAware(profile, library);
+  if (!strong.length) return all;
+  // Qué tan bien ofrece el viaje lo pedido (promedio por noches; con varias intenciones, la más floja).
+  const fit = (c: Candidate) => {
+    const nights = c.stops.reduce((x, st) => x + st.nights, 0) || 1;
+    return Math.min(...strong.map((i) => c.stops.reduce((x, st) => x + (profile.wishIds.includes(st.dest.id) ? 3 : st.dest.tags[i] ?? 0) * st.nights, 0) / nights));
+  };
+  for (const min of [2.5, 1.8]) {
+    const tier = all.filter((c) => fit(c) >= min) as CandidateList;
+    if (primaries(tier) >= 3) return Object.assign(tier, { knownIncluded: all.knownIncluded, seasonRiskIncluded: all.seasonRiskIncluded });
+  }
+  // Si no alcanzan, igual van primero los que mejor lo cumplen.
+  return Object.assign([...all].sort((x, y) => fit(y) - fit(x)), { knownIncluded: all.knownIncluded, seasonRiskIncluded: all.seasonRiskIncluded });
+}
+
+
+
+function generateSeasonAware(profile: TravelerProfile, library: Destination[]): CandidateList {
+  if (!library.length) return [];
   const safe = library.filter((d) => !seasonBlocked(d, profile));
   const first = generateFrom(profile, safe);
   if (primaries(first) >= 3 || safe.length === library.length) return first;

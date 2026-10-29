@@ -1,4 +1,5 @@
 import { DEFAULT_DAILY_SPEND, type DailySpendTable } from "@/core/daily-spend";
+import { DEFAULT_TRIP_ESTIMATE, type TripEstimateTable } from "@/core/trip-estimate";
 import "server-only";
 import { eq } from "drizzle-orm";
 import { BASE_WEIGHTS } from "@/core/catalog";
@@ -40,6 +41,7 @@ export async function planContext(): Promise<PlanContext> {
     connections: KNOWN_CONNECTIONS,
     baseWeights: await getSetting<Record<Criterion, number>>("scoring_weights", BASE_WEIGHTS),
     dailySpend: await getSetting<DailySpendTable>("daily_spend", DEFAULT_DAILY_SPEND),
+    tripEstimate: await getSetting<TripEstimateTable>("trip_estimate", DEFAULT_TRIP_ESTIMATE),
   };
 }
 

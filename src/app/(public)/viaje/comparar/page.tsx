@@ -4,6 +4,7 @@ import { mainStop } from "@/core/sanitize";
 import { SmartImage } from "@/components/media/smart-image";
 import { ACCENT_ORDER, ACCENTS, Badge, Card, CompatibilityRing, Container, Meter, Notice, cx } from "@/components/ui";
 import { imagesFor } from "@/server/media-helpers";
+import { coverPhoto } from "@/server/proposal-media";
 import { currentProposal } from "@/server/services/client-flow";
 import { chooseAlternativeAction } from "../actions";
 
@@ -13,7 +14,12 @@ export default async function CompararPage() {
   const data = await currentProposal();
   if (!data) return null;
   const alts = data.proposal.alternatives;
-  const images = await Promise.all(alts.map((a) => imagesFor(a.imageQuery, 1)));
+  const images = await Promise.all(
+    alts.map((a) => {
+      const main = mainStop(a);
+      return main ? coverPhoto(main.name, main.country, a.imageQuery) : imagesFor(a.imageQuery, 1);
+    }),
+  );
   if (!alts.length) return <Container className="py-10"><Notice tone="warning">No hay alternativas para comparar.</Notice></Container>;
 
   const rows: [string, (a: (typeof alts)[number]) => React.ReactNode][] = [
