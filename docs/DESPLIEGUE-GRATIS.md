@@ -4,7 +4,7 @@ Guía paso a paso pensada para hacerla sin experiencia técnica. Tiempo estimado
 
 **Qué vas a tener al final:** la web funcionando en `https://tu-nombre.duckdns.org`, con HTTPS, base de datos, copias diarias en tu Google Drive y el panel en `/admin`.
 
-**Costo:** US$ 0. Oracle pide una tarjeta para verificar tu identidad, pero no cobra mientras uses solo recursos «Always Free». Más adelante podés sumar un dominio propio (por ejemplo, `vioratravel.com`); está explicado al final.
+**Costo:** US$ 0. Oracle pide una tarjeta para verificar tu identidad, pero no cobra mientras uses solo recursos «Always Free». Más adelante podés sumar un dominio propio (por ejemplo, `viora-travel.com`); está explicado al final.
 
 > **¿Oracle no te deja crear la cuenta?** Seguí la guía alternativa con Google Cloud: [`DESPLIEGUE-GOOGLE-CLOUD.md`](DESPLIEGUE-GOOGLE-CLOUD.md).
 
@@ -236,13 +236,23 @@ VIORA es una app instalable (PWA): no pasa por Google Play ni App Store, se inst
 
 ---
 
-## Más adelante: dominio propio (`vioratravel.com`)
+## Dominio propio (ej.: `viora-travel.com`, comprado en GoDaddy)
 
-1. Comprá el dominio (por ejemplo, en Cloudflare, Namecheap o, para `.com.ar`, en NIC Argentina).
-2. En la configuración DNS del dominio creá un registro **A** con nombre `@` apuntando a la IP del servidor (y otro con nombre `www`, si querés).
-3. En el servidor: `nano .env`, cambiá `DOMAIN` y `APP_URL` por el dominio nuevo y ejecutá `bash deploy/actualizar.sh`.
+1. **En GoDaddy** → *Mis productos* → junto al dominio, **DNS** (o *Administrar DNS*):
+   - Editá el registro **A** con nombre **`@`** y poné como valor la IP del servidor. Si hay más de un registro A con nombre `@` (por ejemplo «Parked»), dejá solo uno.
+   - Verificá que exista el registro **CNAME** con nombre **`www`** y valor **`@`** (GoDaddy lo crea por defecto). Si no está, crealo.
+   - Si el dominio tiene activado **Reenvío** (*Forwarding*), desactivalo.
+2. Esperá a que se propague (de minutos a unas horas). Para comprobarlo, en el servidor: `nslookup viora-travel.com` debe mostrar la IP del servidor.
+3. **En el servidor**, dentro de `viora-travel`:
+   ```bash
+   sed -i 's/^DOMAIN=.*/DOMAIN=viora-travel.com/; s#^APP_URL=.*#APP_URL=https://viora-travel.com#' .env
+   echo "OLD_DOMAIN=vioratravel.duckdns.org" >> .env
+   bash deploy/actualizar.sh
+   ```
+   Caddy pide solo los certificados HTTPS de `viora-travel.com` y `www.viora-travel.com`. `www` redirige a la dirección sin `www`, y los enlaces viejos de DuckDNS redirigen a la nueva (por eso conviene dejar DuckDNS activo).
+4. La app instalada en celulares con la dirección vieja sigue funcionando (redirige), pero conviene reinstalarla desde `https://viora-travel.com/app`.
 
-Los enlaces compartidos viejos (los de `duckdns.org`) dejan de funcionar al cambiar de dominio.
+> Si algún día el servidor se detiene y Oracle le asigna otra IP, hay que actualizar el registro **A** en GoDaddy.
 
 ---
 
