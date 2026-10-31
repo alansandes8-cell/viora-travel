@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { ArrowRight, Compass, Globe2, HeartHandshake, Luggage, Map, Plane, Sparkles, Camera, Castle } from "lucide-react";
 import { TRIP_STYLE_DEFS } from "@/core/catalog";
 import { SmartImage } from "@/components/media/smart-image";
@@ -50,15 +51,30 @@ export default async function HomePage() {
             <p className="mt-5 max-w-xl text-lg text-muted">
               Aunque todavía no sepas adónde ir: respondé unas preguntas simples y recibí tres alternativas pensadas para vos, con itinerario, mapa y el acompañamiento de un asesor.
             </p>
-            <div className="mt-8 flex flex-wrap items-center gap-3">
-              <ButtonLink href="/planificar" className="px-7 py-3 text-base">
-                Empezar a planificar <ArrowRight className="h-4 w-4" aria-hidden />
-              </ButtonLink>
-              <ButtonLink href="#como-funciona" variant="ghost">
-                ¿Cómo funciona?
-              </ButtonLink>
+            {/* Dos caminos: a medida o paquete armado */}
+            <div className="mt-8 grid gap-3 sm:grid-cols-2">
+              <Link href="/planificar" className="group rounded-2xl bg-navy p-4 text-white shadow-lift transition-transform hover:-translate-y-0.5">
+                <span className="text-2xl" aria-hidden>
+                  ✨
+                </span>
+                <span className="mt-1 block font-display text-xl text-white">Planificá tu viaje</span>
+                <span className="mt-0.5 block text-sm text-white/80">Unas preguntas y recibís 3 alternativas a tu medida.</span>
+                <span className="mt-2 inline-flex items-center gap-1 text-sm font-semibold">
+                  Empezar <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" aria-hidden />
+                </span>
+              </Link>
+              <Link href="/paquetes" className="group rounded-2xl border border-line bg-white p-4 shadow-soft transition-transform hover:-translate-y-0.5">
+                <span className="text-2xl" aria-hidden>
+                  🧳
+                </span>
+                <span className="mt-1 block font-display text-xl text-navy">Ver paquetes armados</span>
+                <span className="mt-0.5 block text-sm text-muted">Disney, Europa, Caribe, Brasil y más, con precio.</span>
+                <span className="mt-2 inline-flex items-center gap-1 text-sm font-semibold text-navy">
+                  Ver paquetes <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" aria-hidden />
+                </span>
+              </Link>
             </div>
-            <p className="mt-4 text-sm text-muted">Sin registrarte · Toma unos 5 minutos · Sin compromiso</p>
+            <p className="mt-4 text-sm text-muted">Sin registrarte · Sin compromiso · Un asesor real te acompaña</p>
           </div>
           <div className="relative">
             <SmartImage

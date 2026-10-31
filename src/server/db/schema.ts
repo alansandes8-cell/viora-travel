@@ -421,3 +421,31 @@ export const chatConversations = internal.table(
   },
   (t) => [index("chat_conversations_client_idx").on(t.clientId)],
 );
+
+/**
+ * Paquetes armados que la agencia publica con precio («desde»). Son públicos: los lee el rol
+ * restringido de las páginas públicas (solo los publicados). Precio y servicios los carga la agencia.
+ */
+export const packages = pgTable(
+  "packages",
+  {
+    id: id(),
+    slug: text("slug").notNull().unique(),
+    title: text("title").notNull(),
+    category: text("category").notNull(),
+    summary: text("summary").notNull().default(""),
+    stops: jsonb("stops").$type<{ destinationId: string; nights: number }[]>().notNull().default([]),
+    includes: jsonb("includes").$type<string[]>().notNull().default([]),
+    excludes: jsonb("excludes").$type<string[]>().notNull().default([]),
+    priceFrom: numeric("price_from", { precision: 12, scale: 2 }),
+    currency: text("currency").notNull().default("USD"),
+    priceNote: text("price_note").notNull().default("por persona, en base doble"),
+    departures: text("departures").notNull().default(""),
+    imageUrl: text("image_url"),
+    status: text("status").notNull().default("draft"), // draft | published
+    sort: integer("sort").notNull().default(100),
+    createdAt: createdAt(),
+    updatedAt: ts("updated_at").notNull().defaultNow(),
+  },
+  (t) => [index("packages_category_idx").on(t.category)],
+);

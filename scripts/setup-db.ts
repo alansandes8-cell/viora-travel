@@ -3,6 +3,7 @@
  * Uso: pnpm db:setup   (requiere DATABASE_URL; para crear el rol público, PUBLIC_DB_PASSWORD
  * y que el usuario de DATABASE_URL tenga permiso CREATEROLE, o ejecutarlo con DATABASE_ADMIN_URL).
  */
+import { SEED_PACKAGES } from "../src/core/packages";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { migrate } from "drizzle-orm/node-postgres/migrator";
 import { Pool } from "pg";
@@ -51,7 +52,8 @@ async function main() {
       GRANT SELECT ON client_snapshots, media_assets, media_queries TO viora_public;
       GRANT SELECT (id, project_id, snapshot_id, kind, token_hash, expires_at, revoked_at) ON share_links TO viora_public;
       GRANT UPDATE (last_access_at, access_count) ON share_links TO viora_public;
-      GRANT SELECT (id, project_id, token_hash, step, status, expires_at) ON intake_sessions TO viora_public;`);
+      GRANT SELECT (id, project_id, token_hash, step, status, expires_at) ON intake_sessions TO viora_public;
+      GRANT SELECT ON packages TO viora_public;`);
     if (appUser) await admin.query(`ALTER DEFAULT PRIVILEGES FOR ROLE "${appUser}" IN SCHEMA internal REVOKE ALL ON TABLES FROM PUBLIC;`).catch(() => {});
     await admin.end();
   } else {
@@ -82,6 +84,21 @@ async function main() {
        ON CONFLICT (id) DO UPDATE SET data = EXCLUDED.data, updated_at = now() WHERE destinations.source = 'seed'`,
       [d.id, JSON.stringify(d)],
     );
+  }
+  // Paquetes de ejemplo: solo si todavía no hay ninguno (la agencia después los edita o borra).
+  const { rows: pk } = await pool.query(`SELECT count(*)::int AS n FROM packages`);
+  if (pk[0].n === 0) {
+    let sort = 10;
+    for (const p of SEED_PACKAGES) {
+      await pool.query(`INSERT INTO packages (slug, title, category, summary, stops, status, sort) VALUES ($1,$2,$3,$4,$5,'published',$6) ON CONFLICT (slug) DO NOTHING`, [
+        p.slug,
+        p.title,
+        p.category,
+        p.summary,
+        JSON.stringify(p.stops),
+        (sort += 10),
+      ]);
+    }
   }
   await pool.end();
   console.log("✓ Base de datos lista.");

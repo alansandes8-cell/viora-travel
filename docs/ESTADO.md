@@ -39,6 +39,12 @@ Fecha: 26/10/2026. Este documento separa lo que **funciona y fue probado**, lo q
 - Progreso como pasaporte con sellos, tarjeta «Tu perfil viajero» y confeti al ver la propuesta (se desactiva con «reducir movimiento»).
 - Fotos: en la plataforma salen de Unsplash/Pexels/Wikimedia si hay claves; si no hay foto, se muestra una postal ilustrada del destino rotulada «Ilustración». La vista previa usa solo ilustraciones.
 
+### Paquetes armados y favicon
+
+- **Paquetes** (`/paquetes`): catálogo por experiencias (Disney, Europa clásica, del Este, histórica, Francia, Playas, Caribe, Brasil, Latinoamérica, Argentina, Asia, Lunas de miel) con foto, noches y precio «desde»; página de cada paquete con recorrido, incluye/no incluye y consulta por WhatsApp. La portada ofrece los dos caminos: planificador o paquetes.
+- Se cargan 27 paquetes de ejemplo **sin precio ni servicios** (dicen «Consultá el precio»): la agencia los completa, edita, publica o borra en Panel → Paquetes. El rol público de la base solo puede leerlos.
+- Favicon: la «V» del logo (antes quedaba el ícono por defecto de Next.js).
+
 ### Cuarta ronda: coherencia con lo que pide la persona
 
 - **Intenciones fuertes**: lo que la persona repite en dos o más respuestas (estilo, prioridades, juego, texto) manda: las alternativas se limitan a destinos fuertes en eso (con respaldo si no alcanzan). Ej.: compras → Miami y Orlando, Nueva York; con días de compras en lugares reales (outlets, Ross, Marshalls, TJ Maxx, Sawgrass Mills, Dolphin Mall, Woodbury Common).

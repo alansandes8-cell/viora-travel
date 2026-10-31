@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { MessageCircle } from "lucide-react";
+import { Luggage, MessageCircle } from "lucide-react";
 import { Container, Logo } from "@/components/ui";
 import { Viorita } from "@/components/viorita/viorita";
 import { agency } from "@/server/settings";
@@ -18,8 +18,12 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
             <Link href="/#como-funciona" className="hidden rounded-full px-3 py-2 hover:bg-navy/5 sm:inline">
               Cómo funciona
             </Link>
-            <Link href="/viajes" className="rounded-full px-3 py-2 hover:bg-navy/5">
-              Mis viajes
+            <Link href="/paquetes" className="rounded-full px-2.5 py-2 hover:bg-navy/5 sm:px-3">
+              Paquetes
+            </Link>
+            <Link href="/viajes" className="rounded-full px-2.5 py-2 hover:bg-navy/5 sm:px-3" aria-label="Mis viajes">
+              <Luggage className="h-5 w-5 sm:hidden" aria-hidden />
+              <span className="hidden sm:inline">Mis viajes</span>
             </Link>
             <Link href="/planificar" className="rounded-full bg-navy px-4 py-2 text-white hover:bg-navy/90">
               Planificar
@@ -55,6 +59,12 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
             </Link>
             <Link className="block hover:text-navy" href="/terminos">
               Términos de uso
+            </Link>
+            <Link className="block hover:text-navy" href="/paquetes">
+              Paquetes armados
+            </Link>
+            <Link className="block hover:text-navy" href="/viajes">
+              Mis viajes
             </Link>
             <Link className="block hover:text-navy" href="/app">
               Instalá la app

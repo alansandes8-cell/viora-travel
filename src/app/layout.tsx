@@ -11,7 +11,8 @@ export const metadata: Metadata = {
   description: "Contanos cómo imaginás tu viaje y te ayudamos a convertirlo en una propuesta personalizada, con el acompañamiento de asesores de VIORA TRAVEL.",
   applicationName: "VIORA TRAVEL",
   manifest: "/manifest.webmanifest",
-  icons: { icon: [{ url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" }], apple: "/icons/apple-touch-icon.png" },
+  // El ícono de la pestaña sale de app/favicon.ico y app/icon.png (la «V» del logo).
+  icons: { apple: "/icons/apple-touch-icon.png" },
   appleWebApp: { capable: true, title: "VIORA", statusBarStyle: "default" },
   formatDetection: { telephone: false },
 };
