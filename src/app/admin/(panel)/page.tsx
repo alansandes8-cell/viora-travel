@@ -4,6 +4,7 @@ import { ACTION_LABELS, PageHeader, Panel, Stat, fmtDateTime } from "@/component
 import { Badge } from "@/components/ui";
 import { requireStaff } from "@/server/auth/session";
 import { dashboardStats } from "@/server/services/admin";
+import { LEAD_KINDS, listQuoteLeads } from "@/server/services/leads";
 import { agency } from "@/server/settings";
 
 export const metadata = { title: "Panel" };
@@ -12,7 +13,8 @@ const TASK_STATUS: Record<string, string> = { pending: "Pendiente", in_progress:
 
 export default async function DashboardPage() {
   await requireStaff();
-  const s = await dashboardStats();
+  const [s, leads] = await Promise.all([dashboardStats(), listQuoteLeads(8)]);
+  const newLeads = leads.filter((x) => x.l.status === "new");
   const appUrl = `${agency.appUrl()}/app`;
   const qr = await QRCode.toString(appUrl, { type: "svg", margin: 1, color: { dark: "#1b2a4a", light: "#ffffff" } });
   const waText = `¡Hola! Te paso la app de VIORA TRAVEL para planificar tu viaje: respondés unas preguntas y recibís tres alternativas pensadas para vos. ${appUrl}`;
@@ -101,6 +103,22 @@ export default async function DashboardPage() {
           </ul>
         </Panel>
       </div>
+      <Panel title={`Pedidos de cotización nuevos (${newLeads.length})`} className="mt-6" actions={<Link href="/admin/consultas" className="text-sm font-semibold text-navy hover:underline">Ver todos</Link>}>
+        {newLeads.length ? (
+          <ul className="divide-y divide-line text-sm">
+            {newLeads.map(({ l, client }) => (
+              <li key={l.id} className="flex flex-wrap items-center justify-between gap-2 py-2">
+                <Link href="/admin/consultas" className="min-w-0 text-navy hover:underline">
+                  <b>{client?.name ?? "—"}</b> · <span className="text-muted">{LEAD_KINDS[l.kind] ?? l.kind}:</span> {l.summary}
+                </Link>
+                <span className="text-muted">{fmtDateTime(l.createdAt)}</span>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="text-sm text-muted">No hay pedidos nuevos. Los que lleguen desde Vuelos, Hoteles, Actividades, Paquetes o Viorita aparecen acá.</p>
+        )}
+      </Panel>
       <Panel title="Contactos de Viorita (asistente de la web)" className="mt-6">
         {s.chats.length ? (
           <ul className="divide-y divide-line text-sm">

@@ -1,6 +1,6 @@
 # Estado del proyecto
 
-Fecha: 26/10/2026. Este documento separa lo que **funciona y fue probado**, lo que **funciona con alternativa manual** y lo que **está pendiente**. Ninguna función pendiente se presenta como terminada.
+Fecha: 07/11/2026. Este documento separa lo que **funciona y fue probado**, lo que **funciona con alternativa manual** y lo que **está pendiente**. Ninguna función pendiente se presenta como terminada.
 
 ## 1. Entregables (sección 23 del pedido)
 
@@ -44,6 +44,18 @@ Fecha: 26/10/2026. Este documento separa lo que **funciona y fue probado**, lo q
 - **Paquetes** (`/paquetes`): catálogo por experiencias (Disney, Europa clásica, del Este, histórica, Francia, Playas, Caribe, Brasil, Latinoamérica, Argentina, Asia, Lunas de miel) con foto, noches y precio «desde»; página de cada paquete con recorrido, incluye/no incluye y consulta por WhatsApp. La portada ofrece los dos caminos: planificador o paquetes.
 - Se cargan 27 paquetes de ejemplo **sin precio ni servicios** (dicen «Consultá el precio»): la agencia los completa, edita, publica o borra en Panel → Paquetes. El rol público de la base solo puede leerlos.
 - Favicon: la «V» del logo (antes quedaba el ícono por defecto de Next.js).
+
+### Quinta ronda: buscador, precios con margen y web que vende
+
+- ✅ **Buscador de vuelos, hoteles y actividades** (`/vuelos`, `/hoteles`, `/actividades`, con pestañas junto a Paquetes). Precios **estimados** al instante (`src/core/fares.ts`): vuelos por distancia para cualquier ruta del mundo (temporada alta, anticipación, solo ida, clase, niños y bebés), hoteles por costo del destino y estrellas, actividades por tipo. Tres franjas de precio de vuelo sin inventar aerolíneas ni horarios. Probado de punta a punta.
+- ✅ **Estimaciones recalibradas hacia arriba** (vuelos, hoteles, traslados, temporada alta ×1,3 en ene/feb/jul/dic). La tabla del costo total pasa a la versión 2: si había una guardada de la versión anterior, se usa la nueva hasta que se guarde desde Ajustes.
+- ✅ **Pedidos de cotización** desde vuelos, hoteles, actividades, cada paquete y Viorita: con consentimiento, límite por IP, email a la agencia y nueva sección **Consultas** en el panel (estados Nuevo/Contactado/Cotizado/Cerrado, botón de WhatsApp con mensaje armado) y resumen en el inicio del panel.
+- ⚠️ **Booking / Civitatis**: no hay API pública de precios sin ser socio. Se muestran estimados propios; si la agencia se da de alta como afiliada, cargando `BOOKING_URL_TEMPLATE` / `CIVITATIS_URL_TEMPLATE` aparecen enlaces de referencia (con su comisión). Sin eso no se manda al cliente afuera.
+- ✅ **Viorita conversacional**: pregunta destino, fecha, con quién y presupuesto con respuestas rápidas (o texto libre), responde preguntas con IA (sin guardar nada y quitando emails/teléfonos antes de enviar), y lleva a «dejar tu idea de viaje»; recién ahí pide nombre y WhatsApp/email con consentimiento y crea la consulta.
+- ✅ **Home que vende**: «Viajar puede ser complicado. Con nosotros, es fácil.», accesos a Vuelos/Hoteles/Actividades, «Por qué VIORA», demo animada de **Europa Go** (HTML/CSS, liviana, textos en `src/components/home/europa-go.tsx`), preguntas frecuentes y cierre con WhatsApp.
+- ✅ **Opiniones reales**: formulario público `/opinar` (quedan por revisar) y sección **Opiniones** del panel para cargar las recibidas por WhatsApp/Instagram. La sección de la home no aparece hasta que haya alguna publicada. No se cargaron opiniones inventadas (publicidad engañosa).
+- ✅ **Velocidad**: caché en memoria de fotos (sin consultas repetidas a la base), espera máxima de 1,2 s en la home (si una foto no está, se muestra la ilustración y se carga para la próxima visita). Páginas nuevas responden en ~0,1 s en desarrollo.
+- ✅ **Botón «Siguiente»**: barra inferior de alto y anchos fijos (ya no se corre al cambiar el texto o mostrar errores), sin desenfoque que hacía temblar en iPhone, y se esconde mientras el teclado del celular está abierto.
 
 ### Cuarta ronda: coherencia con lo que pide la persona
 

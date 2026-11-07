@@ -15,11 +15,17 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
             <Logo size={136} className="w-[120px] sm:w-[136px]" />
           </Link>
           <nav className="flex items-center gap-1 text-sm font-semibold text-navy sm:gap-3">
-            <Link href="/#como-funciona" className="hidden rounded-full px-3 py-2 hover:bg-navy/5 sm:inline">
+            <Link href="/#como-funciona" className="hidden rounded-full px-3 py-2 hover:bg-navy/5 xl:inline">
               Cómo funciona
             </Link>
             <Link href="/paquetes" className="rounded-full px-2.5 py-2 hover:bg-navy/5 sm:px-3">
               Paquetes
+            </Link>
+            <Link href="/vuelos" className="hidden rounded-full px-3 py-2 hover:bg-navy/5 md:inline">
+              Vuelos
+            </Link>
+            <Link href="/hoteles" className="hidden rounded-full px-3 py-2 hover:bg-navy/5 lg:inline">
+              Hoteles
             </Link>
             <Link href="/viajes" className="rounded-full px-2.5 py-2 hover:bg-navy/5 sm:px-3" aria-label="Mis viajes">
               <Luggage className="h-5 w-5 sm:hidden" aria-hidden />
@@ -62,6 +68,15 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
             </Link>
             <Link className="block hover:text-navy" href="/paquetes">
               Paquetes armados
+            </Link>
+            <Link className="block hover:text-navy" href="/vuelos">
+              Vuelos
+            </Link>
+            <Link className="block hover:text-navy" href="/hoteles">
+              Hoteles
+            </Link>
+            <Link className="block hover:text-navy" href="/actividades">
+              Actividades y excursiones
             </Link>
             <Link className="block hover:text-navy" href="/viajes">
               Mis viajes

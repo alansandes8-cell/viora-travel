@@ -77,3 +77,18 @@ export async function searchPlaces(raw: string, limit = 8): Promise<PlaceHit[]> 
     .slice(0, limit)
     .map((h) => h.hit);
 }
+
+const BY_IATA = new Map(AIRPORTS.map((a) => [a[0], a]));
+
+/** Aeropuerto por código IATA (para el buscador de vuelos). */
+export function airportByIata(code: string): AirportHit | null {
+  const a = BY_IATA.get(code.trim().toUpperCase());
+  return a ? { iata: a[0], name: a[1], city: cityOf(a[2]), country: COUNTRIES[a[3]] ?? a[3], countryCode: a[3], lat: a[4], lng: a[5] } : null;
+}
+
+/** Código de país (ISO-2) a partir del nombre que muestra el buscador de lugares. */
+export function countryCodeOf(name: string): string | null {
+  const n = normalize(name);
+  for (const [cc, label] of Object.entries(COUNTRIES)) if (normalize(label) === n) return cc;
+  return null;
+}

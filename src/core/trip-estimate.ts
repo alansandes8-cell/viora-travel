@@ -18,36 +18,50 @@ export interface TripEstimateTable {
   /** Meses de temporada alta para quien viaja desde Argentina (vacaciones): se encarecen los vuelos. */
   peakMonths: number[];
   peakFactor: number;
+  version?: number;
 }
 
+/**
+ * Versión de la tabla: si la guardada en Ajustes es anterior, se usan estos valores por defecto
+ * (la v1 quedaba por debajo de los precios reales). Al guardar desde Ajustes se marca la vigente.
+ */
+export const TRIP_ESTIMATE_VERSION = 2;
+
 export const DEFAULT_TRIP_ESTIMATE: TripEstimateTable = {
+  version: TRIP_ESTIMATE_VERSION,
+  // Con margen hacia arriba: mejor que el presupuesto final quede por debajo de lo estimado.
   flights: {
-    argentina: [150, 350],
-    sudamerica: [350, 750],
-    brasil: [300, 650],
-    caribe: [700, 1200],
-    mexico: [750, 1250],
-    centroamerica: [750, 1250],
-    usa: [750, 1300],
-    europa: [1100, 1800],
-    "medio-oriente": [1300, 2100],
-    japon: [1700, 2600],
-    "sudeste-asiatico": [1500, 2400],
-    indico: [1600, 2600],
+    argentina: [220, 450],
+    sudamerica: [450, 900],
+    brasil: [400, 800],
+    caribe: [950, 1600],
+    mexico: [950, 1600],
+    centroamerica: [950, 1600],
+    usa: [1000, 1700],
+    europa: [1350, 2300],
+    "medio-oriente": [1600, 2600],
+    japon: [2000, 3300],
+    "sudeste-asiatico": [1800, 3000],
+    indico: [2000, 3300],
   },
   hotel: [
-    [45, 80],
-    [70, 110],
-    [95, 150],
-    [140, 220],
-    [200, 320],
+    [60, 110],
+    [85, 150],
+    [120, 200],
+    [170, 290],
+    [240, 420],
   ],
-  legs: { train: [40, 120], plane: [80, 200], ferry: [50, 120], bus: [20, 50], car: [60, 150], private_transfer: [60, 150], public_transport: [5, 20] },
-  hotelTier: { backpacker: 0.4, economic: 0.7, moderate: 1, comfort: 1.4, premium: 2, unlimited: 3.2 },
-  flightTier: { backpacker: 0.9, economic: 0.95, moderate: 1, comfort: 1.1, premium: 1.5, unlimited: 3 },
-  peakMonths: [1, 7, 12],
-  peakFactor: 1.25,
+  legs: { train: [50, 160], plane: [110, 260], ferry: [60, 150], bus: [25, 70], car: [80, 190], private_transfer: [80, 190], public_transport: [8, 25] },
+  hotelTier: { backpacker: 0.45, economic: 0.75, moderate: 1, comfort: 1.45, premium: 2.1, unlimited: 3.4 },
+  flightTier: { backpacker: 0.92, economic: 0.97, moderate: 1, comfort: 1.1, premium: 1.6, unlimited: 3.2 },
+  peakMonths: [1, 2, 7, 12],
+  peakFactor: 1.3,
 };
+
+/** Tabla vigente: la guardada solo si es de la versión actual. */
+export function currentTripTable(saved: TripEstimateTable | null | undefined): TripEstimateTable {
+  return saved && (saved.version ?? 1) >= TRIP_ESTIMATE_VERSION ? saved : DEFAULT_TRIP_ESTIMATE;
+}
 
 export interface TripEstimate {
   currency: "USD";

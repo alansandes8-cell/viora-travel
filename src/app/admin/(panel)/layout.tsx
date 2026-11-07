@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { BookOpen, LayoutDashboard, LogOut, Settings, Users, Briefcase, Package } from "lucide-react";
+import { BookOpen, Briefcase, Inbox, LayoutDashboard, LogOut, Package, Settings, Star, Users } from "lucide-react";
 import { Logo } from "@/components/ui";
 import { requireStaff } from "@/server/auth/session";
 import { logoutAction } from "../login/actions";
@@ -13,7 +13,9 @@ export default async function PanelLayout({ children }: { children: React.ReactN
     { href: "/admin", label: "Inicio", icon: <LayoutDashboard className="h-4 w-4" /> },
     { href: "/admin/proyectos", label: "Proyectos", icon: <Briefcase className="h-4 w-4" /> },
     { href: "/admin/clientes", label: "Clientes", icon: <Users className="h-4 w-4" /> },
+    { href: "/admin/consultas", label: "Consultas", icon: <Inbox className="h-4 w-4" /> },
     { href: "/admin/paquetes", label: "Paquetes", icon: <Package className="h-4 w-4" /> },
+    { href: "/admin/opiniones", label: "Opiniones", icon: <Star className="h-4 w-4" /> },
     { href: "/admin/biblioteca", label: "Biblioteca", icon: <BookOpen className="h-4 w-4" /> },
     { href: "/admin/ajustes", label: "Ajustes", icon: <Settings className="h-4 w-4" /> },
   ];

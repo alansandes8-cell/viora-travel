@@ -13,3 +13,8 @@ export async function startVioritaAction(input: unknown) {
 export async function sendVioritaAction(text: string) {
   return sendViorita(text);
 }
+
+export async function askVioritaAction(history: unknown, text: string) {
+  const { askViorita } = await import("@/server/services/viorita");
+  return askViorita(history, text);
+}

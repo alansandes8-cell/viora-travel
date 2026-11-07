@@ -105,18 +105,23 @@ test.describe("Experiencia del cliente", () => {
     expect((await res.body()).subarray(0, 4).toString()).toBe("%PDF");
   });
 
-  test("Viorita toma los datos con consentimiento y responde", async ({ page }) => {
+  test("Viorita conversa, guía al presupuesto y toma los datos con consentimiento", async ({ page }) => {
     await page.goto("/");
     await page.getByRole("button", { name: "Abrir chat con Viorita" }).click();
     const chat = page.getByRole("dialog", { name: "Chat con Viorita" });
+    await chat.getByRole("button", { name: "🌏 Asia" }).click();
+    await chat.getByLabel("Mensaje para Viorita").fill("En abril");
+    await chat.getByRole("button", { name: "Enviar" }).click();
+    await chat.getByRole("button", { name: "En pareja 💑" }).click();
+    await chat.getByRole("button", { name: "Prefiero que me asesoren" }).click();
+    await expect(chat.getByText(/Asia · En abril · En pareja/)).toBeVisible();
+    await chat.getByRole("button", { name: /quiero mi presupuesto/ }).click();
     await chat.locator('input[name="name"]').fill("Ana Prueba");
     await chat.locator('input[name="phone"]').fill("+54 9 11 1234 5678");
-    await chat.locator('textarea[name="message"]').fill("Quiero ir a Japón en abril");
-    await chat.getByRole("button", { name: "Empezar a chatear" }).click();
-    await expect(chat.getByText("Necesitamos tu permiso para contactarte.").or(chat.locator("input:invalid"))).toHaveCount(1);
+    await chat.getByRole("button", { name: "Enviar mi idea de viaje" }).click();
+    await expect(chat.locator("input:invalid")).toHaveCount(1);
     await chat.locator('input[name="consent"]').check();
-    await chat.getByRole("button", { name: "Empezar a chatear" }).click();
-    await expect(chat.getByText("Quiero ir a Japón en abril")).toBeVisible();
+    await chat.getByRole("button", { name: "Enviar mi idea de viaje" }).click();
     await expect(chat.locator("p").filter({ hasText: /Ana/ }).last()).toBeVisible({ timeout: 30000 });
     await chat.getByLabel("Mensaje para Viorita").fill("¿Qué me recomendás?");
     await chat.getByRole("button", { name: "Enviar" }).click();

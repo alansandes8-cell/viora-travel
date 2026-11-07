@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Sparkles } from "lucide-react";
 import { PACKAGE_CATEGORIES } from "@/core/packages";
 import { SmartImage } from "@/components/media/smart-image";
+import { TravelTabs } from "@/components/quote/travel-tabs";
 import { ButtonLink, Card, Container, cx } from "@/components/ui";
 import { packageCover, packageKind, packageNights, packagePrice } from "@/server/package-view";
 import { publishedPackages } from "@/server/services/packages";
@@ -21,7 +22,8 @@ export default async function PaquetesPage({ searchParams }: PageProps<"/paquete
   const names = (p: (typeof all)[number]) => p.stops.map((s) => library.find((d) => d.id === s.destinationId)?.name ?? s.destinationId).join(" · ");
 
   return (
-    <Container className="py-10">
+    <Container className="py-8 sm:py-10">
+      <TravelTabs active="paquetes" className="mb-6" />
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <p className="text-sm font-bold uppercase tracking-wider text-coral-brand">Listos para salir</p>

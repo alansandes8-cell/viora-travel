@@ -53,7 +53,8 @@ async function main() {
       GRANT SELECT (id, project_id, snapshot_id, kind, token_hash, expires_at, revoked_at) ON share_links TO viora_public;
       GRANT UPDATE (last_access_at, access_count) ON share_links TO viora_public;
       GRANT SELECT (id, project_id, token_hash, step, status, expires_at) ON intake_sessions TO viora_public;
-      GRANT SELECT ON packages TO viora_public;`);
+      GRANT SELECT ON packages TO viora_public;
+      GRANT SELECT (id, name, city, trip, text, rating, status, created_at) ON testimonials TO viora_public;`);
     if (appUser) await admin.query(`ALTER DEFAULT PRIVILEGES FOR ROLE "${appUser}" IN SCHEMA internal REVOKE ALL ON TABLES FROM PUBLIC;`).catch(() => {});
     await admin.end();
   } else {

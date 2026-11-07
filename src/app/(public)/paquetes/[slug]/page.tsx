@@ -5,6 +5,7 @@ import { Check, MessageCircle, Sparkles, X } from "lucide-react";
 import { PACKAGE_CATEGORIES } from "@/core/packages";
 import { SmartImage } from "@/components/media/smart-image";
 import { ButtonLink, Card, Container } from "@/components/ui";
+import { QuoteForm } from "@/components/quote/quote-form";
 import { whatsappLink } from "@/server/integrations/notify";
 import { packageCover, packageKind, packageNights, packagePrice } from "@/server/package-view";
 import { destinationPhotos } from "@/server/proposal-media";
@@ -90,6 +91,7 @@ export default async function PaquetePage({ params }: PageProps<"/paquetes/[slug
                   <MessageCircle className="h-4 w-4" aria-hidden /> Consultar por WhatsApp
                 </a>
               )}
+              <ButtonLink href="#cotizar">Pedir cotización</ButtonLink>
               <ButtonLink href="/planificar" variant="secondary">
                 <Sparkles className="h-4 w-4" aria-hidden /> Quiero adaptarlo a mi medida
               </ButtonLink>
@@ -126,6 +128,16 @@ export default async function PaquetePage({ params }: PageProps<"/paquetes/[slug
           )}
           {p.includes.length === 0 && <p className="px-1 text-sm text-muted">Tu asesor te detalla qué incluye (vuelos, hoteles, traslados y excursiones) según tus fechas.</p>}
         </aside>
+      </div>
+      <div id="cotizar" className="mt-10 scroll-mt-24">
+        <QuoteForm
+          kind="package"
+          summary={`Paquete «${p.title}»${price ? ` (desde ${price})` : ""}`}
+          details={{ package: p.slug, title: p.title }}
+          title="Pedí este paquete para tus fechas"
+          intro="Contanos cuándo querés viajar y con quién: un asesor te manda la tarifa actualizada y te ayuda a reservar."
+          cta="Quiero este paquete"
+        />
       </div>
     </Container>
   );

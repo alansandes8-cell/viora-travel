@@ -449,3 +449,40 @@ export const packages = pgTable(
   },
   (t) => [index("packages_category_idx").on(t.category)],
 );
+
+/**
+ * Pedidos de cotización desde el buscador (vuelos, hoteles, actividades, paquetes) y desde Viorita.
+ * Datos personales: esquema interno, el rol público no los lee.
+ */
+export const quoteLeads = internal.table(
+  "quote_leads",
+  {
+    id: id(),
+    clientId: uuid("client_id").references(() => clients.id, { onDelete: "cascade" }),
+    kind: text("kind").notNull(), // flight | hotel | activity | package | viorita | custom
+    summary: text("summary").notNull(),
+    details: jsonb("details").$type<Record<string, unknown>>().notNull().default({}),
+    message: text("message").notNull().default(""),
+    status: text("status").notNull().default("new"), // new | contacted | quoted | closed
+    createdAt: createdAt(),
+    updatedAt: ts("updated_at").notNull().defaultNow(),
+  },
+  (t) => [index("quote_leads_status_idx").on(t.status)],
+);
+
+/**
+ * Opiniones de clientes reales. Las envía el cliente (con permiso para publicarlas) o las carga
+ * la agencia a partir de un mensaje real; solo se muestran las aprobadas.
+ */
+export const testimonials = pgTable("testimonials", {
+  id: id(),
+  name: text("name").notNull(),
+  city: text("city").notNull().default(""),
+  trip: text("trip").notNull().default(""),
+  text: text("text").notNull(),
+  rating: integer("rating").notNull().default(5),
+  source: text("source").notNull().default("cliente"), // cliente | agencia
+  status: text("status").notNull().default("pending"), // pending | approved | hidden
+  contact: text("contact"), // solo para verificar; nunca se publica
+  createdAt: createdAt(),
+});

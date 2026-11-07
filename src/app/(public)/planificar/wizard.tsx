@@ -141,6 +141,16 @@ export function Wizard({
     return m;
   });
   const [step, setStep] = useState(() => Math.min(Math.max(0, initialStep), STEPS.length - 1));
+  // En celulares, con el teclado abierto la barra inferior se esconde para que no flote ni tape.
+  // Se detecta por el alto visible de la pantalla (si el teclado se cierra, la barra vuelve).
+  const [typing, setTyping] = useState(false);
+  useEffect(() => {
+    const vv = window.visualViewport;
+    if (!vv) return;
+    const check = () => setTyping(vv.height < window.innerHeight * 0.75);
+    vv.addEventListener("resize", check);
+    return () => vv.removeEventListener("resize", check);
+  }, []);
   const [budgetAmount, setBudgetAmount] = useState<{ amount: string; currency: "USD" | "ARS" | "EUR"; per: "person" | "group" }>({ amount: "", currency: "USD", per: "person" });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [saved, setSaved] = useState<"idle" | "saving" | "saved" | "error">("idle");
@@ -828,18 +838,26 @@ export function Wizard({
         )}
       </div>
 
-      <div className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-white/95 pb-[env(safe-area-inset-bottom)] backdrop-blur">
-        <div className="mx-auto flex max-w-3xl items-center justify-between gap-3 px-4 py-3 sm:px-6">
-          <Button variant="ghost" onClick={() => setStep((s) => Math.max(0, s - 1))} disabled={step === 0}>
+      {/* Barra fija: alto y anchos constantes (no «salta») y se oculta mientras el teclado del celular está abierto. */}
+      <div
+        className={cx(
+          "fixed inset-x-0 bottom-0 z-30 transform-gpu border-t border-line bg-white pb-[env(safe-area-inset-bottom)] shadow-[0_-4px_16px_rgba(27,42,74,0.06)] transition-transform duration-200",
+          typing && "translate-y-full",
+        )}
+      >
+        <div className="mx-auto grid h-16 max-w-3xl grid-cols-[auto_1fr_auto] items-center gap-3 px-4 sm:px-6">
+          <Button variant="ghost" className="min-w-[6.5rem] justify-center" onClick={() => setStep((s) => Math.max(0, s - 1))} disabled={step === 0}>
             <ArrowLeft className="h-4 w-4" aria-hidden /> Atrás
           </Button>
-          {Object.keys(errors).length > 0 && <p className="hidden text-sm font-semibold text-danger sm:block">Revisá lo marcado en rojo</p>}
+          <p className="truncate text-center text-sm font-semibold text-danger" aria-live="polite">
+            {Object.keys(errors).length > 0 ? "Revisá lo marcado" : ""}
+          </p>
           {step < STEPS.length - 1 ? (
-            <Button onClick={next}>
+            <Button onClick={next} className="min-w-[9.5rem] justify-center">
               Siguiente <ArrowRight className="h-4 w-4" aria-hidden />
             </Button>
           ) : (
-            <Button onClick={() => submit()} disabled={questions === null}>
+            <Button onClick={() => submit()} disabled={questions === null} className="min-w-[9.5rem] justify-center">
               Ver mis alternativas <Sparkles className="h-4 w-4" aria-hidden />
             </Button>
           )}

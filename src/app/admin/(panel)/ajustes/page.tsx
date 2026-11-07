@@ -14,7 +14,7 @@ import { chromiumPath } from "@/server/pdf";
 import { getSetting } from "@/server/settings";
 import { llmConfigured, llmProvider } from "@/server/ai/llm";
 import { DEFAULT_DAILY_SPEND, type DailySpendTable } from "@/core/daily-spend";
-import { DEFAULT_TRIP_ESTIMATE, type TripEstimateTable } from "@/core/trip-estimate";
+import { DEFAULT_TRIP_ESTIMATE, currentTripTable, type TripEstimateTable } from "@/core/trip-estimate";
 import { SUPER_REGION_LABEL } from "@/core/library";
 import { confirmTotp, createUser, purgeExpired, refreshPhotos, saveDailySpend, saveTripEstimate, testPdf, renameStatus, saveGeneral, saveWeights, startTotp, toggleUser } from "./actions";
 
@@ -39,7 +39,7 @@ export default async function AjustesPage() {
       .where(eq(schema.mediaQueries.provider, "wikipedia")),
   ]);
   const spend = await getSetting<DailySpendTable>("daily_spend", DEFAULT_DAILY_SPEND);
-  const est = await getSetting<TripEstimateTable>("trip_estimate", DEFAULT_TRIP_ESTIMATE);
+  const est = currentTripTable(await getSetting<TripEstimateTable | null>("trip_estimate", null));
   const pdfTest = await getSetting<{ ok: boolean; detail: string; at: string } | null>("last_pdf_test", null);
   const photosOk = photoCount.filter((r) => r.ok === "ok").length;
   const photosFail = photoCount.filter((r) => r.ok !== "ok").length;
