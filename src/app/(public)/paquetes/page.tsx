@@ -9,7 +9,11 @@ import { packageCover, packageKind, packageNights, packagePrice } from "@/server
 import { publishedPackages } from "@/server/services/packages";
 import { loadLibrary } from "@/server/settings";
 
-export const metadata: Metadata = { title: "Paquetes armados", description: "Paquetes de viaje listos para salir: Disney, Europa, Caribe, Brasil, Argentina, Asia y más." };
+export const metadata: Metadata = {
+  title: "Paquetes turísticos desde Argentina: Disney, Europa, Caribe, Brasil y más",
+  description: "Paquetes de viaje armados con salida desde Argentina, con precio: Disney y Orlando, Europa, Caribe, Brasil, Argentina, Asia y lunas de miel. Adaptalos a tu medida.",
+  alternates: { canonical: "/paquetes" },
+};
 export const dynamic = "force-dynamic";
 
 export default async function PaquetesPage({ searchParams }: PageProps<"/paquetes">) {

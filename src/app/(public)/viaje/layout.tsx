@@ -6,6 +6,7 @@ import { Container } from "@/components/ui";
 import { TripNav } from "./trip-nav";
 
 export const dynamic = "force-dynamic";
+export const metadata = { robots: { index: false, follow: false } };
 
 export default async function ViajeLayout({ children }: { children: React.ReactNode }) {
   const data = await currentProposal();

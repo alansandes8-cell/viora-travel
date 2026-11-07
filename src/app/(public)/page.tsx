@@ -10,9 +10,14 @@ import { HERO_SPOTS } from "@/server/media-warmup";
 import { EuropaGoVideo } from "@/components/home/europa-go";
 import { whatsappLink } from "@/server/integrations/notify";
 import { approvedTestimonials } from "@/server/services/leads";
+import { loadLibrary } from "@/server/settings";
+import { JsonLd, faqLd } from "@/components/seo/json-ld";
 import { agency } from "@/server/settings";
 
 export const dynamic = "force-dynamic";
+export const metadata = { alternates: { canonical: "/" } };
+
+const TOP_DESTINATIONS = ["orlando", "miami", "riviera-maya", "punta-cana", "madrid", "roma", "paris", "rio", "nueva-york", "barcelona", "bariloche", "florianopolis"];
 
 const FEATURED = ["beach_relax", "eurotrip", "theme_parks", "honeymoon", "nature_adventure", "big_cities", "family", "discover"] as const;
 
@@ -56,6 +61,8 @@ export default async function HomePage() {
     Promise.all(styles.map(async (s) => [await firstImage(s.photoSpots, 1200)].filter((x) => x !== null))),
     approvedTestimonials(),
   ]);
+  const library = await loadLibrary();
+  const top = TOP_DESTINATIONS.map((id) => library.find((d) => d.id === id)).filter((d) => !!d);
   const wa = agency.whatsapp();
   const heroIndex = heroOptions.findIndex((h) => h.length > 0);
   const hero = heroIndex >= 0 ? heroOptions[heroIndex] : [];
@@ -267,7 +274,35 @@ export default async function HomePage() {
         </section>
       )}
 
+      {/* Destinos más buscados (enlaces a las guías: ayudan a Google y a la persona) */}
+      {top.length > 0 && (
+        <section className="py-16">
+          <Container>
+            <SectionTitle eyebrow="Guías de viaje" title="Destinos más buscados" intro="Mejor época, cuánto cuesta, qué hacer y dónde alojarse." accent="cyan" />
+            <ul className="mt-8 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
+              {top.map((d) => (
+                <li key={d.id}>
+                  <Link href={`/destinos/${d.id}`} className="flex min-h-14 items-center justify-between gap-2 rounded-2xl border border-line bg-white px-4 py-3 text-navy shadow-soft hover:border-navy">
+                    <span>
+                      <span className="block font-semibold">Viajar a {d.name}</span>
+                      <span className="block text-xs text-muted">{d.country}</span>
+                    </span>
+                    <ArrowRight className="h-4 w-4 shrink-0 text-teal-brand" aria-hidden />
+                  </Link>
+                </li>
+              ))}
+            </ul>
+            <div className="mt-6 text-center">
+              <Link href="/destinos" className="font-semibold text-navy underline">
+                Ver todas las guías de destinos
+              </Link>
+            </div>
+          </Container>
+        </section>
+      )}
+
       {/* Preguntas frecuentes */}
+      <JsonLd data={faqLd(FAQ)} />
       <section className="bg-white py-16">
         <Container className="max-w-3xl">
           <SectionTitle eyebrow="Preguntas frecuentes" title="Todo claro antes de viajar" accent="purple" />

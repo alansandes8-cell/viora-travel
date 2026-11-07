@@ -6,6 +6,8 @@ import { PACKAGE_CATEGORIES } from "@/core/packages";
 import { SmartImage } from "@/components/media/smart-image";
 import { ButtonLink, Card, Container } from "@/components/ui";
 import { QuoteForm } from "@/components/quote/quote-form";
+import { JsonLd, breadcrumbs } from "@/components/seo/json-ld";
+import { siteUrl } from "@/server/seo";
 import { whatsappLink } from "@/server/integrations/notify";
 import { packageCover, packageKind, packageNights, packagePrice } from "@/server/package-view";
 import { destinationPhotos } from "@/server/proposal-media";
@@ -16,7 +18,15 @@ export const dynamic = "force-dynamic";
 
 export async function generateMetadata({ params }: PageProps<"/paquetes/[slug]">): Promise<Metadata> {
   const p = await publishedPackage((await params).slug);
-  return p ? { title: p.title, description: p.summary } : { title: "Paquete" };
+  if (!p) return { title: "Paquete", robots: { index: false } };
+  const price = packagePrice(p);
+  const description = `${p.summary}${price ? ` Desde ${price} ${p.priceNote}.` : ""} Paquete con salida desde Argentina: pedí tu cotización a VIORA TRAVEL.`.trim();
+  return {
+    title: `${p.title}${price ? ` desde ${price}` : ""}`,
+    description: description.slice(0, 300),
+    alternates: { canonical: `/paquetes/${p.slug}` },
+    openGraph: { title: p.title, description: description.slice(0, 300), url: `/paquetes/${p.slug}`, locale: "es_AR", siteName: "VIORA TRAVEL", images: [p.imageUrl ? { url: p.imageUrl } : { url: "/opengraph-image", width: 1200, height: 630 }] },
+  };
 }
 
 export default async function PaquetePage({ params }: PageProps<"/paquetes/[slug]">) {
@@ -30,8 +40,27 @@ export default async function PaquetePage({ params }: PageProps<"/paquetes/[slug
   const url = `${agency.appUrl()}/paquetes/${p.slug}`;
   const wa = agency.whatsapp() ? whatsappLink(agency.whatsapp(), `¡Hola VIORA! Me interesa el paquete «${p.title}». ${url}`) : null;
 
+  const base = siteUrl();
+  const nights = stops.reduce((a, x) => a + x.nights, 0);
+  const tripLd = {
+    "@context": "https://schema.org",
+    "@type": "TouristTrip",
+    name: p.title,
+    description: p.summary,
+    url: `${base}/paquetes/${p.slug}`,
+    ...(cover ? { image: cover.url } : {}),
+    touristType: cat?.label,
+    itinerary: { "@type": "ItemList", itemListElement: stops.map((x, i) => ({ "@type": "ListItem", position: i + 1, item: { "@type": "TouristDestination", name: x.dest!.name, url: `${base}/destinos/${x.destinationId}` } })) },
+    provider: { "@id": `${base}/#agencia` },
+    ...(price && Number(p.priceFrom) > 0
+      ? { offers: { "@type": "Offer", price: Number(p.priceFrom), priceCurrency: p.currency === "ARS" ? "ARS" : p.currency, availability: "https://schema.org/InStock", url: `${base}/paquetes/${p.slug}`, description: p.priceNote } }
+      : {}),
+    ...(nights ? { duration: `P${nights + 1}D` } : {}),
+  };
+
   return (
     <Container className="py-8">
+      <JsonLd data={[tripLd, breadcrumbs(base, [["Inicio", "/"], ["Paquetes", "/paquetes"], [p.title, `/paquetes/${p.slug}`]])]} />
       <Link href={cat ? `/paquetes?cat=${cat.id}` : "/paquetes"} className="text-sm font-semibold text-navy hover:underline">
         ← {cat ? `${cat.emoji} ${cat.label}` : "Paquetes"}
       </Link>
@@ -53,7 +82,11 @@ export default async function PaquetePage({ params }: PageProps<"/paquetes/[slug
                       <p className="text-xs font-bold uppercase tracking-wide text-muted">
                         Parada {i + 1} · {s.nights} noches
                       </p>
-                      <h3 className="mt-1 text-lg font-semibold">{s.dest!.name}</h3>
+                      <h3 className="mt-1 text-lg font-semibold">
+                        <Link href={`/destinos/${s.destinationId}`} className="hover:underline">
+                          {s.dest!.name}
+                        </Link>
+                      </h3>
                       <p className="mt-1 text-sm text-muted">{s.dest!.summary}</p>
                       <ul className="mt-2 flex flex-wrap gap-1.5">
                         {s.dest!.highlights.slice(0, 4).map((h) => (

@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Container } from "@/components/ui";
 import { agency } from "@/server/settings";
 
-export const metadata: Metadata = { title: "Privacidad y datos personales" };
+export const metadata: Metadata = { title: "Privacidad y datos personales", alternates: { canonical: "/privacidad" } };
 
 export default function PrivacidadPage() {
   const email = agency.email();

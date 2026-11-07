@@ -5,7 +5,7 @@ import { listSavedTrips } from "@/server/services/client-flow";
 import { forgetTripAction, newTripAction, openTripAction } from "./actions";
 import { ConfirmSubmit } from "./confirm-submit";
 
-export const metadata: Metadata = { title: "Mis viajes" };
+export const metadata: Metadata = { title: "Mis viajes", robots: { index: false, follow: false } };
 export const dynamic = "force-dynamic";
 
 const fmt = (iso: string) => new Date(iso).toLocaleDateString("es-AR", { day: "numeric", month: "short", year: "numeric" });

@@ -8,7 +8,11 @@ import { TravelTabs } from "@/components/quote/travel-tabs";
 import { referenceLink } from "@/server/reference-links";
 import { loadLibrary } from "@/server/settings";
 
-export const metadata: Metadata = { title: "Actividades y excursiones", description: "Excursiones, entradas y experiencias en cada destino, con precio estimado. Pedí tu cotización a VIORA." };
+export const metadata: Metadata = {
+  title: "Excursiones y actividades: qué hacer en cada destino y cuánto cuesta",
+  description: "Excursiones, entradas a parques y museos, tours y experiencias en cada destino, con precio estimado. Elegí las que te gustan y te las reservamos.",
+  alternates: { canonical: "/actividades" },
+};
 export const dynamic = "force-dynamic";
 
 export default async function ActividadesPage({ searchParams }: PageProps<"/actividades">) {

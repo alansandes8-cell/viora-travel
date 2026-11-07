@@ -4,6 +4,11 @@ import { Container, Logo } from "@/components/ui";
 import { Viorita } from "@/components/viorita/viorita";
 import { agency } from "@/server/settings";
 import { whatsappLink } from "@/server/integrations/notify";
+import { JsonLd } from "@/components/seo/json-ld";
+import { organizationLd } from "@/server/seo";
+
+// Las páginas públicas se generan en el servidor con la dirección real del sitio (APP_URL).
+export const dynamic = "force-dynamic";
 
 export default function PublicLayout({ children }: { children: React.ReactNode }) {
   const wa = agency.whatsapp();
@@ -37,6 +42,7 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
           </nav>
         </Container>
       </header>
+      <JsonLd data={organizationLd()} />
       <main className="flex-1">{children}</main>
       <Viorita />
       <footer className="mt-20 border-t border-line bg-white no-print">
@@ -68,6 +74,9 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
             </Link>
             <Link className="block hover:text-navy" href="/paquetes">
               Paquetes armados
+            </Link>
+            <Link className="block hover:text-navy" href="/destinos">
+              Guías de destinos
             </Link>
             <Link className="block hover:text-navy" href="/vuelos">
               Vuelos

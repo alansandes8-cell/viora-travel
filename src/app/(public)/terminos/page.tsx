@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Container } from "@/components/ui";
 
-export const metadata: Metadata = { title: "Términos de uso" };
+export const metadata: Metadata = { title: "Términos de uso", alternates: { canonical: "/terminos" } };
 
 export default function TerminosPage() {
   return (

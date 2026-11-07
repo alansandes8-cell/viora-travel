@@ -45,6 +45,13 @@ Fecha: 07/11/2026. Este documento separa lo que **funciona y fue probado**, lo q
 - Se cargan 27 paquetes de ejemplo **sin precio ni servicios** (dicen «Consultá el precio»): la agencia los completa, edita, publica o borra en Panel → Paquetes. El rol público de la base solo puede leerlos.
 - Favicon: la «V» del logo (antes quedaba el ícono por defecto de Next.js).
 
+### Sexta ronda: SEO
+
+- ✅ Mapa del sitio, robots, títulos/descripciones por página, canónicas, imagen para compartir, `noindex` en páginas privadas.
+- ✅ Guías de destino (`/destinos` y `/destinos/[id]`, una por cada destino de la biblioteca) generadas con datos curados: mejor época por mes, costos estimados desde Buenos Aires, qué hacer, dónde alojarse, qué comer, avisos, paquetes relacionados, destinos cercanos y preguntas frecuentes.
+- ✅ Datos estructurados: TravelAgency, WebSite, TouristDestination, TouristTrip (con Offer si hay precio), BreadcrumbList, FAQPage.
+- ⚠️ Requiere acción de la agencia: verificar en Google Search Console y enviar el sitemap (ver [`SEO.md`](SEO.md)).
+
 ### Quinta ronda: buscador, precios con margen y web que vende
 
 - ✅ **Buscador de vuelos, hoteles y actividades** (`/vuelos`, `/hoteles`, `/actividades`, con pestañas junto a Paquetes). Precios **estimados** al instante (`src/core/fares.ts`): vuelos por distancia para cualquier ruta del mundo (temporada alta, anticipación, solo ida, clase, niños y bebés), hoteles por costo del destino y estrellas, actividades por tipo. Tres franjas de precio de vuelo sin inventar aerolíneas ni horarios. Probado de punta a punta.

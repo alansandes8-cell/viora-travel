@@ -11,7 +11,11 @@ import { TravelTabs } from "@/components/quote/travel-tabs";
 import { referenceLink } from "@/server/reference-links";
 import { loadLibrary } from "@/server/settings";
 
-export const metadata: Metadata = { title: "Hoteles", description: "Mirá cuánto cuesta aproximadamente alojarte en cada destino y pedí tu cotización a VIORA." };
+export const metadata: Metadata = {
+  title: "Hoteles en todo el mundo: cuánto cuesta alojarse y mejores zonas",
+  description: "Precio estimado por noche de hoteles 3, 4 y 5 estrellas en cada destino y las mejores zonas para alojarse. Pedí tu cotización a VIORA TRAVEL.",
+  alternates: { canonical: "/hoteles" },
+};
 export const dynamic = "force-dynamic";
 
 const POPULAR = ["Miami", "Orlando", "Madrid", "Roma", "París", "Cancún", "Punta Cana", "Río de Janeiro"];

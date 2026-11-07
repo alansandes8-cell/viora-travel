@@ -9,7 +9,11 @@ import { QuoteForm } from "@/components/quote/quote-form";
 import { TravelTabs } from "@/components/quote/travel-tabs";
 import { airportByIata } from "@/server/places";
 
-export const metadata: Metadata = { title: "Vuelos", description: "Buscá vuelos a cualquier destino, mirá precios estimados y pedí tu cotización a un asesor de VIORA." };
+export const metadata: Metadata = {
+  title: "Vuelos desde Argentina a todo el mundo: precios estimados al instante",
+  description: "Buscá vuelos desde Buenos Aires y cualquier ciudad a Miami, Madrid, Cancún, Orlando, Río y el mundo. Mirá el precio estimado al instante y pedí la tarifa real a un asesor de VIORA.",
+  alternates: { canonical: "/vuelos" },
+};
 export const dynamic = "force-dynamic";
 
 const POPULAR = [
