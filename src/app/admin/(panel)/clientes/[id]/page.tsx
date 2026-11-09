@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui";
 import { requireStaff } from "@/server/auth/session";
 import { db, schema } from "@/server/db";
 import { anonymizeClient } from "../actions";
+import { AccessForm, TripForm } from "../../viajes/editor";
 
 export default async function ClientePage({ params }: PageProps<"/admin/clientes/[id]">) {
   const staff = await requireStaff();
@@ -14,6 +15,8 @@ export default async function ClientePage({ params }: PageProps<"/admin/clientes
   const c = await db().query.clients.findFirst({ where: eq(schema.clients.id, id) });
   if (!c) notFound();
   const projects = await db().select().from(schema.tripProjects).where(eq(schema.tripProjects.clientId, id)).orderBy(desc(schema.tripProjects.createdAt));
+  const sold = await db().select().from(schema.bookedTrips).where(eq(schema.bookedTrips.clientId, id)).orderBy(desc(schema.bookedTrips.startDate));
+  const account = await db().query.clientAccounts.findFirst({ where: eq(schema.clientAccounts.clientId, id) });
   const chats = await db().select().from(schema.chatConversations).where(eq(schema.chatConversations.clientId, id)).orderBy(desc(schema.chatConversations.createdAt));
   return (
     <>
@@ -46,6 +49,35 @@ export default async function ClientePage({ params }: PageProps<"/admin/clientes
           </ul>
           <p className="mt-3 text-xs text-muted">Las preferencias de viajes anteriores pueden reutilizarse para nuevas propuestas con autorización del cliente.</p>
         </Panel>
+        {!c.anonymizedAt && (
+          <Panel title="Viajes vendidos («Mi viaje»)" className="lg:col-span-2">
+            {sold.length > 0 && (
+              <ul className="mb-4 space-y-2 text-sm">
+                {sold.map((t) => (
+                  <li key={t.id}>
+                    <Link href={`/admin/viajes/${t.id}`} className="font-semibold text-navy hover:underline">
+                      {t.title} {t.subtitle}
+                    </Link>{" "}
+                    <span className="text-muted">
+                      {t.startDate} → {t.endDate}
+                    </span>{" "}
+                    <Badge tone={t.status === "published" ? "teal" : "orange"}>{t.status === "published" ? "Publicado" : "Borrador"}</Badge>
+                  </li>
+                ))}
+              </ul>
+            )}
+            <details className="rounded-xl border border-line p-3" open={sold.length === 0}>
+              <summary className="cursor-pointer font-semibold text-navy">Nuevo viaje vendido</summary>
+              <div className="mt-3">
+                <TripForm clientId={c.id} initial={{ title: "Plan de viaje", subtitle: "", startDate: "", endDate: "", travelers: c.name ?? "", coverPlace: "", europaGo: false, assistance: "", notes: "", status: "draft" }} />
+              </div>
+            </details>
+            <div className="mt-4 border-t border-line pt-4">
+              <p className="mb-2 font-semibold text-navy">Acceso a «Mi viaje»</p>
+              <AccessForm clientId={c.id} email={account?.email ?? c.email ?? ""} hasAccount={!!account} activated={!!account?.passwordHash} clientName={c.name ?? ""} phone={c.phone ?? ""} />
+            </div>
+          </Panel>
+        )}
         {chats.length > 0 && (
           <Panel title="Conversación con Viorita" className="lg:col-span-2">
             {chats.map((ch) => (

@@ -14,6 +14,7 @@ import {
   uniqueIndex,
   index,
   uuid,
+  customType,
 } from "drizzle-orm/pg-core";
 import type { IntakeAnswers, PlanDocument } from "@/core/types";
 
@@ -486,3 +487,139 @@ export const testimonials = pgTable("testimonials", {
   contact: text("contact"), // solo para verificar; nunca se publica
   createdAt: createdAt(),
 });
+
+// ───────────────────────── Mi viaje (clientes que compraron) ─────────────────────────
+
+const bytea = customType<{ data: Buffer; driverData: Buffer }>({ dataType: () => "bytea" });
+
+/** Acceso del cliente a «Mi viaje». Se crea cuando compra; el cliente elige su contraseña con un enlace. */
+export const clientAccounts = internal.table("client_accounts", {
+  id: id(),
+  clientId: uuid("client_id")
+    .notNull()
+    .unique()
+    .references(() => clients.id, { onDelete: "cascade" }),
+  email: text("email").notNull().unique(),
+  passwordHash: text("password_hash"),
+  active: boolean("active").notNull().default(true),
+  failedAttempts: integer("failed_attempts").notNull().default(0),
+  lockedUntil: ts("locked_until"),
+  lastLoginAt: ts("last_login_at"),
+  createdAt: createdAt(),
+});
+
+/** Enlaces de un solo uso para activar la cuenta o recuperar la contraseña. */
+export const clientAccountTokens = internal.table("client_account_tokens", {
+  id: id(),
+  accountId: uuid("account_id")
+    .notNull()
+    .references(() => clientAccounts.id, { onDelete: "cascade" }),
+  tokenHash: text("token_hash").notNull().unique(),
+  purpose: text("purpose").notNull(), // activate | reset
+  expiresAt: ts("expires_at").notNull(),
+  usedAt: ts("used_at"),
+  createdAt: createdAt(),
+});
+
+export const clientSessions = internal.table("client_sessions", {
+  id: id(),
+  accountId: uuid("account_id")
+    .notNull()
+    .references(() => clientAccounts.id, { onDelete: "cascade" }),
+  tokenHash: text("token_hash").notNull().unique(),
+  expiresAt: ts("expires_at").notNull(),
+  createdAt: createdAt(),
+});
+
+export interface PlanEntry {
+  time: string;
+  title: string;
+  text: string;
+  link: string;
+  /** Lugar para buscar la foto (p. ej. «Fontana di Trevi») o enlace https a una foto. */
+  photo: string;
+  /** Servicio relacionado (su voucher aparece en la actividad). */
+  itemId: string;
+}
+export interface PlanDay {
+  date: string; // AAAA-MM-DD
+  city: string;
+  countryCode: string;
+  summary: string;
+  entries: PlanEntry[];
+}
+
+/** Viaje vendido: lo que el cliente ve en «Mi viaje». */
+export const bookedTrips = internal.table(
+  "booked_trips",
+  {
+    id: id(),
+    clientId: uuid("client_id")
+      .notNull()
+      .references(() => clients.id, { onDelete: "cascade" }),
+    projectId: uuid("project_id").references(() => tripProjects.id, { onDelete: "set null" }),
+    title: text("title").notNull().default("Plan de viaje"),
+    subtitle: text("subtitle").notNull().default(""),
+    startDate: date("start_date").notNull(),
+    endDate: date("end_date").notNull(),
+    travelers: text("travelers").notNull().default(""),
+    coverPlace: text("cover_place").notNull().default(""),
+    europaGo: boolean("europa_go").notNull().default(false),
+    assistance: text("assistance").notNull().default(""),
+    notes: text("notes").notNull().default(""),
+    plan: jsonb("plan").$type<PlanDay[]>().notNull().default([]),
+    status: text("status").notNull().default("draft"), // draft | published
+    createdAt: createdAt(),
+    updatedAt: ts("updated_at").notNull().defaultNow(),
+  },
+  (t) => [index("booked_trips_client_idx").on(t.clientId)],
+);
+
+/** Servicios comprados: vuelos, hoteles, traslados, actividades, asistencia… */
+export const tripItems = internal.table(
+  "trip_items",
+  {
+    id: id(),
+    tripId: uuid("trip_id")
+      .notNull()
+      .references(() => bookedTrips.id, { onDelete: "cascade" }),
+    kind: text("kind").notNull(),
+    title: text("title").notNull(),
+    provider: text("provider").notNull().default(""),
+    startDate: date("start_date"),
+    startTime: text("start_time").notNull().default(""),
+    endDate: date("end_date"),
+    endTime: text("end_time").notNull().default(""),
+    place: text("place").notNull().default(""),
+    address: text("address").notNull().default(""),
+    confirmation: text("confirmation").notNull().default(""),
+    details: text("details").notNull().default(""),
+    breakfast: boolean("breakfast"),
+    rating: text("rating").notNull().default(""),
+    price: numeric("price", { precision: 12, scale: 2 }),
+    currency: text("currency").notNull().default("USD"),
+    photos: jsonb("photos").$type<string[]>().notNull().default([]),
+    voucherUrl: text("voucher_url").notNull().default(""),
+    sort: integer("sort").notNull().default(0),
+    createdAt: createdAt(),
+  },
+  (t) => [index("trip_items_trip_idx").on(t.tripId)],
+);
+
+/** Vouchers subidos (PDF o imagen). Solo los ve el dueño del viaje o el equipo. */
+export const tripFiles = internal.table(
+  "trip_files",
+  {
+    id: id(),
+    tripId: uuid("trip_id")
+      .notNull()
+      .references(() => bookedTrips.id, { onDelete: "cascade" }),
+    itemId: uuid("item_id").references(() => tripItems.id, { onDelete: "set null" }),
+    filename: text("filename").notNull(),
+    mime: text("mime").notNull(),
+    size: integer("size").notNull(),
+    data: bytea("data").notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [index("trip_files_trip_idx").on(t.tripId)],
+);

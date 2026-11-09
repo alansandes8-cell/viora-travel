@@ -1,13 +1,13 @@
 "use client";
 
-import { useActionState } from "react";
-import { Button, Notice, inputClass } from "@/components/ui";
+import { useActionState, startTransition } from "react";
+import { Button, Notice, inputClass, keepFields } from "@/components/ui";
 import { addTestimonialAction } from "./actions";
 
 export function AddTestimonialForm() {
   const [state, action, pending] = useActionState(addTestimonialAction, null);
   return (
-    <form action={action} className="grid min-w-0 gap-3 sm:grid-cols-2">
+    <form key={state?.n ?? 0} onSubmit={keepFields(action, startTransition)} className="grid min-w-0 gap-3 sm:grid-cols-2">
       <label className="block text-sm font-semibold text-navy">
         Nombre (como se publica)
         <input name="name" required maxLength={60} placeholder="Ej.: Laura G." className={`${inputClass} mt-1`} />

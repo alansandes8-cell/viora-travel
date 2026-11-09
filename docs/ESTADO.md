@@ -45,6 +45,13 @@ Fecha: 07/11/2026. Este documento separa lo que **funciona y fue probado**, lo q
 - Se cargan 27 paquetes de ejemplo **sin precio ni servicios** (dicen «Consultá el precio»): la agencia los completa, edita, publica o borra en Panel → Paquetes. El rol público de la base solo puede leerlos.
 - Favicon: la «V» del logo (antes quedaba el ícono por defecto de Next.js).
 
+### Séptima ronda: «Mi viaje» para clientes que compraron
+
+- ✅ Acceso de clientes (`/acceder`) separado del panel: el cliente elige su contraseña con un enlace de un solo uso (14 días), recupera la contraseña por email si está configurado, bloqueo por intentos fallidos.
+- ✅ Panel: **Viajes vendidos** con datos del viaje, servicios (vuelo, hotel, tren, bus, traslado, auto, actividad, asistencia), vouchers PDF/imagen (verificados por su contenido, hasta 10 MB, guardados en la base), plan día por día con armado automático y vista previa «como el cliente».
+- ✅ «Mi viaje»: portada con cuenta regresiva, accesos rápidos (voucher del vuelo, Europa Go), cronograma total (calendario semanal en compu, lista en celular), reservas con vouchers, día a día con horarios, fotos y mapa, asistencia y WhatsApp del asesor. Probado de punta a punta, incluido que otra persona no puede ver el viaje ni los vouchers.
+- Guía: [`MI-VIAJE.md`](MI-VIAJE.md).
+
 ### Sexta ronda: SEO
 
 - ✅ Mapa del sitio, robots, títulos/descripciones por página, canónicas, imagen para compartir, `noindex` en páginas privadas.

@@ -47,6 +47,15 @@ const nextConfig: NextConfig = {
         ],
       },
       {
+        // Área privada de clientes: nunca indexar ni cachear; los enlaces de contraseña no se filtran como referer.
+        source: "/:area(mi-viaje|acceder)/:path*",
+        headers: [
+          { key: "X-Robots-Tag", value: "noindex, nofollow" },
+          { key: "Cache-Control", value: "private, no-store" },
+          { key: "Referrer-Policy", value: "no-referrer" },
+        ],
+      },
+      {
         source: "/admin/:path*",
         headers: [
           { key: "X-Robots-Tag", value: "noindex, nofollow" },

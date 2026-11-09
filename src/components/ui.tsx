@@ -1,6 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import type { ComponentProps, ReactNode } from "react";
+import type { ComponentProps, FormEvent, ReactNode } from "react";
 import type { VerificationStatus } from "@/core/types";
 import { VERIFICATION_LABELS } from "@/core/types";
 
@@ -156,4 +156,16 @@ export function Field({ label, hint, error, children, htmlFor }: { label: string
       {error && <p className="text-xs font-semibold text-danger">{error}</p>}
     </div>
   );
+}
+
+/**
+ * Envía un formulario a una acción de servidor SIN vaciar los campos (React 19 los vacía
+ * al usar `<form action>`): si hay un error, la persona no pierde lo que escribió.
+ */
+export function keepFields(dispatch: (fd: FormData) => void, start: (cb: () => void) => void) {
+  return (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const fd = new FormData(e.currentTarget);
+    start(() => dispatch(fd));
+  };
 }

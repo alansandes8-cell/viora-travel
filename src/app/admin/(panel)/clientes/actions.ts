@@ -17,6 +17,9 @@ export async function anonymizeClient(clientId: string) {
     await db().update(schema.quoteRequests).set({ name: "Anonimizado", email: null, phone: null, message: null }).where(inArray(schema.quoteRequests.projectId, ids));
     await db().delete(schema.notes).where(inArray(schema.notes.projectId, ids));
   }
+  // Acceso a «Mi viaje» y viajes vendidos (reservas, vouchers y nombres de viajeros).
+  await db().delete(schema.clientAccounts).where(eq(schema.clientAccounts.clientId, clientId));
+  await db().delete(schema.bookedTrips).where(eq(schema.bookedTrips.clientId, clientId));
   // Las conversaciones con Viorita también contienen datos personales.
   await db().delete(schema.chatConversations).where(eq(schema.chatConversations.clientId, clientId));
   await logActivity("client.anonymized", { actorKind: "staff", actorId: staff.id, details: { clientId, projects: ids.length } });
