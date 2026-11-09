@@ -22,3 +22,12 @@ Después el cliente entra siempre desde **viora-travel.com/acceder** (o el ícon
 - Cada cliente solo ve sus viajes **publicados** y sus vouchers; nadie más puede abrirlos (ni con el enlace del archivo).
 - Bloqueo temporal tras varios intentos fallidos y límite de intentos por conexión.
 - Al «anonimizar» un cliente se borran su acceso, sus viajes vendidos y sus vouchers.
+
+## Viaje de ejemplo (para verlo o mostrarlo)
+
+En el servidor:
+```
+cd viora-travel
+docker compose run --rm setup pnpm demo:mi-viaje --email TU-EMAIL
+```
+Crea el cliente «DEMO · Cliente de prueba» con un viaje publicado a Europa (Roma, Florencia, Venecia y París: vuelos, hoteles, trenes, actividades, asistencia y plan día por día) y muestra el enlace para elegir la contraseña. Se puede repetir: cada vez lo vuelve a crear desde cero. Para borrarlo, anonimizá o eliminá ese cliente desde el panel.
